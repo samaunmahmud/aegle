@@ -1,170 +1,70 @@
-# Chest X-Ray Classifier — Java + DL4J + Spring Boot
+# Aegle
 
-A CNN-based medical image classifier that detects **pneumonia** in chest X-rays.
-Built entirely in Java using **Deeplearning4j** for the ML pipeline and **Spring Boot** for the web server.
+Clinical decision support for doctors and radiologists: AI-assisted triage and
+second opinions across medical images and reports. Aegle is a tool for
+clinicians only. It suggests, the clinician decides.
 
-## Tech Stack
+> Status: early development. Not a medical device and not for clinical use.
 
-| Layer | Technology |
-|---|---|
-| ML framework | Deeplearning4j (DL4J) 1.0.0-M2.1 |
-| ND array backend | ND4J Native (CPU) |
-| Image loading | DataVec / NativeImageLoader |
-| Web server | Spring Boot 3.2 |
-| Build tool | Maven |
-| Java version | 17+ |
-
-## CNN Architecture
+## Architecture
 
 ```
-Input: 1 × 64 × 64 (grayscale)
-  │
-  ├── Conv2D(32, 3×3, ReLU) → MaxPool(2×2)
-  ├── Conv2D(64, 3×3, ReLU) → MaxPool(2×2)
-  ├── Conv2D(128, 3×3, ReLU) → MaxPool(2×2)
-  │
-  ├── Flatten → Dense(256, ReLU) → Dropout(0.5)
-  └── Dense(2, Softmax)  →  [NORMAL | PNEUMONIA]
+ Clinician (React SPA, OIDC login)
+        │ HTTPS
+        ▼
+ Core API (Spring Boot) ──── PostgreSQL (metadata, worklist, audit; row-level security)
+        │ enqueue job          │ signed URLs
+        ▼                      ▼
+   Job queue              Object storage (MinIO / S3, encrypted)
+        │
+        ▼
+ Inference workers (Python / FastAPI): one adapter per registered model
+   → probabilities + Grad-CAM heatmap + model version
+
+ Orthanc  – DICOM server (C-STORE / DICOMweb)
+ Keycloak – identity provider (OIDC, MFA)
 ```
 
-## Dataset
+Aegle is a platform of pluggable models. Each model is registered with a
+modality, body part, task and intended use. The chest X-ray pneumonia
+classifier is model #1; its original Java/DL4J prototype is documented in
+[docs/pneumonia-prototype.md](docs/pneumonia-prototype.md).
 
-Download the **Chest X-Ray Images (Pneumonia)** dataset from Kaggle:
-https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia
+Design rules:
 
-After downloading, unzip it so your project looks like this:
+1. Multi-tenant from day one: every tenant table has `org_id` and Postgres RLS.
+2. Patient identifiers are encrypted and isolated in one table; the AI pipeline sees internal IDs only.
+3. AI output is a suggestion; every prediction has a clinician review state.
+4. Every prediction records the exact model version.
+5. The triage score is explainable (`worklist_items.priority_reason`).
 
-```
-medical-image-classifier/
-  dataset/
-    chest_xray/
-      train/
-        NORMAL/         ← ~1341 images
-        PNEUMONIA/      ← ~3875 images
-      test/
-        NORMAL/         ← ~234 images
-        PNEUMONIA/      ← ~390 images
-      val/
-        NORMAL/
-        PNEUMONIA/
-  pom.xml
-  src/
-  ...
-```
-
-## Quickstart
-
-### 1. Build the project
+## Local development
 
 ```bash
-mvn clean package -DskipTests
+cp .env.example .env          # then change the values
+docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8080
 ```
 
-### 2. Run the app
+The schema lives in `src/main/resources/db/migration/`. The application must
+connect as the `aegle_app` role (created by the migration, `NOLOGIN` until you
+give it a password) because superusers bypass row-level security:
 
-```bash
-mvn spring-boot:run
+```sql
+ALTER ROLE aegle_app LOGIN PASSWORD '...';
 ```
 
-Or run the packaged jar:
+Per transaction, the API sets the tenant with
+`SET LOCAL app.current_org_id = '<uuid>'`. With no tenant set, queries return
+no rows.
 
-```bash
-java -jar target/medical-image-classifier-1.0.0.jar
-```
+## Data policy
 
-The server starts on **http://localhost:8080**
+Never commit patient or imaging data, datasets, or model weights.
+`.gitignore` excludes `dataset/`, `saved-model/`, `*.dcm` and model files.
 
-### 3. Train the model
+## Roadmap
 
-Before making predictions, you need to train the CNN once.
-Either click "Train" in the UI, or call the REST API:
-
-```bash
-curl -X POST http://localhost:8080/api/train
-```
-
-Training takes ~5–20 minutes on CPU (10 epochs, 64×64 images).
-The trained model is saved to `saved-model/xray-cnn.zip` and reloaded automatically.
-
-### 4. Make predictions
-
-Open **http://localhost:8080** in your browser, drag in a chest X-ray image, and click **Analyse X-Ray**.
-
-Or use curl:
-
-```bash
-curl -X POST http://localhost:2005/api/predict \
-  -F "image=@/path/to/xray.jpg"
-```
-
-Response:
-```json
-{
-  "label": "PNEUMONIA",
-  "confidence": 0.9312,
-  "normalProbability": 0.0688,
-  "pneumoniaProbability": 0.9312,
-  "modelLoaded": true
-}
-```
-
-## REST API Reference
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/status` | Check if model is loaded |
-| `POST` | `/api/train` | Train the CNN (blocks until done) |
-| `POST` | `/api/predict` | Classify an uploaded image |
-
-## Configuration (`application.properties`)
-
-```properties
-# Change dataset or model paths if needed
-app.dataset.path=dataset/chest_xray
-app.model.path=saved-model/xray-cnn.zip
-
-# Image size fed to the CNN
-app.image.height=64
-app.image.width=64
-app.image.channels=1    # 1 = grayscale
-
-# Training
-app.training.epochs=10
-app.training.batch-size=32
-app.training.learning-rate=0.001
-```
-
-## Project Structure
-
-```
-src/main/java/com/medclassifier/
-  MedicalClassifierApplication.java   ← Spring Boot entry point
-  controller/
-    ClassifierController.java         ← REST endpoints
-  service/
-    ModelTrainer.java                 ← CNN definition & training loop
-    PredictionService.java            ← Model loading & inference
-  model/
-    PredictionResult.java             ← API response DTO
-
-src/main/resources/
-  application.properties
-  static/
-    index.html                        ← Web UI (drag & drop)
-```
-
-## Expected Performance
-
-On the Kaggle chest X-ray dataset with default settings (10 epochs, 64×64):
-
-| Metric | Approximate value |
-|---|---|
-| Test accuracy | ~75–85% |
-| Training time (CPU) | 10–20 min |
-
-Accuracy can be improved by increasing image size to 128×128, adding data augmentation, or using more epochs.
-
-## Disclaimer
-
-This project is for **educational and portfolio purposes only**.
-It is **not** a certified medical device and must not be used for clinical diagnosis.
+1. Architecture and database design (in progress)
+2. Backend API and inference pipeline
+3. Frontend dashboard and triage worklist
+4. Security and compliance
