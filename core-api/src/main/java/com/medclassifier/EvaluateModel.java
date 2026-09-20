@@ -36,8 +36,8 @@ public class EvaluateModel {
 
     public static void main(String[] args) throws Exception {
 
-        String modelPath = "saved-model/xray-cnn.zip";
-        String testPath = "dataset/chest_xray/test";
+        String modelPath = "../saved-model/xray-cnn.zip";
+        String testPath = "../dataset/chest_xray/test";
 
         System.out.println("Loading model from " + modelPath + " ...");
         MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(new File(modelPath));

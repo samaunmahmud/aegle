@@ -45,7 +45,7 @@ cp .env.example .env          # then change the values
 docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8080
 ```
 
-The schema lives in `src/main/resources/db/migration/`. The application must
+The schema lives in `core-api/src/main/resources/db/migration/`. The application must
 connect as the `aegle_app` role (created by the migration, `NOLOGIN` until you
 give it a password) because superusers bypass row-level security:
 

@@ -1,4 +1,4 @@
-package com.medclassifier;
+package com.medclassifier.controller;
 
 import com.medclassifier.model.PredictionResult;
 import com.medclassifier.service.ModelTrainer;

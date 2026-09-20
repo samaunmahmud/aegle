@@ -1,4 +1,4 @@
-package com.medclassifier;
+package com.medclassifier.service;
 
 import org.datavec.api.io.labels.ParentPathLabelGenerator;
 import org.datavec.api.split.FileSplit;
