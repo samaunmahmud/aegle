@@ -24,6 +24,31 @@ Writes `../saved-model/pneumonia-resnet18.pt` and `.json` (weights plus
 metadata including test metrics). Validation is split **by patient**, because
 many patients have several images and an image-level split would leak.
 
+### Model #1 results and known limitations (v0.1.0)
+
+Held-out Kaggle test set (624 images, threshold 0.5):
+
+| AUC | Sensitivity | Specificity | Accuracy | False positives |
+|---|---|---|---|---|
+| 0.968 | 0.990 | 0.667 | 0.869 | 78 of 234 normals |
+
+Treat this as a research prototype, not a usable clinical model:
+
+- **Validation is not trustworthy.** Patient-level validation AUC was 0.999
+  with 100% specificity, far above test performance. The train and validation
+  images come from the same source, and normal and pneumonia images in this
+  dataset differ in ways unrelated to disease (scanner, positioning, markers).
+- **Grad-CAM shows shortcut learning.** On one confidently-predicted pneumonia
+  case the strongest activation was in the image corner, outside the body.
+  Heatmaps must be shown to clinicians as an aid, never as proof of the finding.
+- **Low specificity.** It over-calls pneumonia (a third of normal test images
+  flagged), which would flood a triage worklist.
+- **Pediatric, single-centre data.** No adult or external validation.
+
+Next steps for this model: adult multi-centre data (CheXpert, NIH ChestX-ray14,
+MIMIC-CXR), lung segmentation or cropping before classification to remove
+border and marker cues, probability calibration, and external validation.
+
 ## Run
 
 ```bash
