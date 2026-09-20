@@ -1,0 +1,37 @@
+# Build output
+target/
+build/
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Medical data and model artifacts: never commit patient/imaging data or weights
+dataset/
+data/
+saved-model/
+*.dcm
+*.zip
+*.onnx
+*.pt
+*.pth
+*.h5
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.properties
+application-local.yml
+
+# Local infrastructure volumes
+.docker-data/
