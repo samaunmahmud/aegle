@@ -1,0 +1,55 @@
+"""Contract every Aegle model adapter implements.
+
+A model is one (modality, body part, task) tuple with a declared intended use.
+Adding a model means adding one adapter and registering it in registry.py.
+"""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+
+from PIL import Image
+
+
+@dataclass(frozen=True)
+class ModelInfo:
+    id: str
+    version: str
+    modality: str            # DICOM modality code, e.g. "XR"
+    body_part: str | None
+    task: str                # classification | segmentation | extraction
+    intended_use: str
+    weights_sha256: str
+    metrics: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Prediction:
+    label: str
+    probability: float
+
+
+@dataclass(frozen=True)
+class Heatmap:
+    method: str              # e.g. "grad-cam"
+    target_label: str
+    png: bytes               # heatmap blended over the input image
+
+
+@dataclass(frozen=True)
+class PredictionOutput:
+    predictions: list[Prediction]   # sorted by probability, descending
+    heatmap: Heatmap | None
+
+
+class ModelUnavailable(RuntimeError):
+    """Raised when a registered model has no usable weights on this host."""
+
+
+class ModelAdapter(ABC):
+    @property
+    @abstractmethod
+    def info(self) -> ModelInfo: ...
+
+    @abstractmethod
+    def predict(self, image: Image.Image, explain: bool = True) -> PredictionOutput: ...

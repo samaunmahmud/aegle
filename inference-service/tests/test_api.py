@@ -1,0 +1,130 @@
+"""API and imaging tests. Run with: pytest
+
+Uses a tiny randomly-initialised model written to a temp dir, so the tests need
+neither the dataset nor trained weights and run in seconds.
+"""
+import base64
+import io
+import json
+
+import numpy as np
+import pytest
+import torch
+from fastapi.testclient import TestClient
+from PIL import Image
+
+from app import imaging
+from app.models import chest_xray_pneumonia as cxp
+from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, build_resnet18
+
+
+@pytest.fixture(scope="module")
+def client(tmp_path_factory, monkeypatch_module):
+    model_dir = tmp_path_factory.mktemp("models")
+    torch.manual_seed(0)
+    torch.save(build_resnet18(2).state_dict(), model_dir / cxp.WEIGHTS_FILE)
+    (model_dir / cxp.META_FILE).write_text(json.dumps({
+        "version": "test", "labels": ["NORMAL", "PNEUMONIA"], "input_size": 64,
+        "mean": IMAGENET_MEAN, "std": IMAGENET_STD,
+    }))
+    monkeypatch_module.setenv("AEGLE_MODEL_DIR", str(model_dir))
+    from app.main import app
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture(scope="module")
+def monkeypatch_module():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+def png_bytes(size=(120, 90)) -> bytes:
+    arr = (np.random.RandomState(1).rand(size[1], size[0]) * 255).astype(np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(arr).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_health_reports_loaded_model(client):
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert body["models_loaded"] == ["chest-xray-pneumonia"]
+
+
+def test_list_models_exposes_intended_use_and_hash(client):
+    (m,) = client.get("/v1/models").json()["models"]
+    assert m["modality"] == "XR" and m["intended_use"]
+    assert len(m["weights_sha256"]) == 64
+
+
+def test_predict_returns_sorted_probabilities_and_heatmap(client):
+    r = client.post("/v1/models/chest-xray-pneumonia/predict",
+                    files={"file": ("x.png", png_bytes(), "image/png")})
+    assert r.status_code == 200
+    body = r.json()
+    probs = [p["probability"] for p in body["predictions"]]
+    assert probs == sorted(probs, reverse=True)
+    assert abs(sum(probs) - 1) < 1e-3
+    assert body["top_label"] == body["predictions"][0]["label"]
+    heat = Image.open(io.BytesIO(base64.b64decode(body["heatmap"]["image_base64"])))
+    assert heat.size == (120, 90)          # overlay matches the original image size
+
+
+def test_heatmap_can_be_disabled(client):
+    r = client.post("/v1/models/chest-xray-pneumonia/predict?heatmap=false",
+                    files={"file": ("x.png", png_bytes(), "image/png")})
+    assert r.status_code == 200 and r.json()["heatmap"] is None
+
+
+def test_unknown_model_is_404(client):
+    r = client.post("/v1/models/nope/predict", files={"file": ("x.png", png_bytes(), "image/png")})
+    assert r.status_code == 404
+
+
+@pytest.mark.parametrize("payload", [b"", b"not an image at all"])
+def test_bad_upload_is_422(client, payload):
+    r = client.post("/v1/models/chest-xray-pneumonia/predict", files={"file": ("x.bin", payload)})
+    assert r.status_code == 422
+
+
+def test_missing_weights_gives_503(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGLE_MODEL_DIR", str(tmp_path))
+    from app.main import app
+    with TestClient(app) as c:
+        assert c.get("/health").json()["status"] == "degraded"
+        r = c.post("/v1/models/chest-xray-pneumonia/predict",
+                   files={"file": ("x.png", png_bytes(), "image/png")})
+        assert r.status_code == 503
+
+
+def test_dicom_monochrome1_is_inverted_and_decoded():
+    import pydicom
+    from pydicom.dataset import FileDataset, FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+
+    def make(photometric):
+        meta = FileMetaDataset()
+        meta.TransferSyntaxUID = ExplicitVRLittleEndian
+        meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.1"
+        meta.MediaStorageSOPInstanceUID = generate_uid()
+        ds = FileDataset(None, {}, file_meta=meta, preamble=b"\0" * 128)
+        ds.Rows, ds.Columns = 32, 32
+        ds.SamplesPerPixel, ds.BitsAllocated, ds.BitsStored, ds.HighBit = 1, 16, 16, 15
+        ds.PixelRepresentation = 0
+        ds.PhotometricInterpretation = photometric
+        ds.PixelData = np.tile(np.arange(32, dtype=np.uint16) * 100, (32, 1)).tobytes()
+        buf = io.BytesIO()
+        pydicom.dcmwrite(buf, ds)
+        return buf.getvalue()
+
+    mono2 = np.asarray(imaging.decode_image(make("MONOCHROME2")))[..., 0].astype(int)
+    mono1 = np.asarray(imaging.decode_image(make("MONOCHROME1")))[..., 0].astype(int)
+    assert mono2.shape == (32, 32)
+    assert mono2[0, 0] < mono2[0, -1]          # MONOCHROME2: brighter to the right
+    assert mono1[0, 0] > mono1[0, -1]          # MONOCHROME1: inverted
+
+
+def test_decode_rejects_oversized_upload():
+    with pytest.raises(imaging.UnsupportedImage):
+        imaging.decode_image(b"\0" * (imaging.MAX_UPLOAD_BYTES + 1))
