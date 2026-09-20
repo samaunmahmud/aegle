@@ -1,0 +1,70 @@
+server:
+  port: 8081
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  application:
+    name: aegle-core-api
+  datasource:
+    url: ${AEGLE_DB_URL:jdbc:postgresql://localhost:5433/aegle}
+    username: aegle_app                  # restricted role: row-level security applies
+    password: ${APP_DB_PASSWORD}
+  flyway:
+    # Migrations run as the schema owner, not as the restricted application role.
+    url: ${AEGLE_DB_URL:jdbc:postgresql://localhost:5433/aegle}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 52MB
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AEGLE_OIDC_ISSUER:http://localhost:8080/realms/aegle}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+aegle:
+  cors:
+    allowed-origins: http://localhost:5173
+  storage:
+    endpoint: ${AEGLE_S3_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ROOT_USER}
+    secret-key: ${MINIO_ROOT_PASSWORD}
+    bucket: aegle
+  inference:
+    base-url: ${AEGLE_INFERENCE_URL:http://localhost:8000}
+    connect-timeout: 3s
+    read-timeout: 120s
+  phi:
+    enc-key: ${AEGLE_PHI_ENC_KEY}
+    hash-key: ${AEGLE_PHI_HASH_KEY}
+  worker:
+    enabled: true
+    poll-interval-ms: 1000
+    max-attempts: 3
+    retry-backoff: 30s
+    stale-after: 10m
+  models:
+    auto-activate: false                 # a model version must be approved before it runs
+    sync-interval-ms: 60000
+    sync-initial-delay-ms: 2000
+  triage:
+    # Priority = sum over labels of probability x weight of that label's urgency class,
+    # plus a capped bonus that grows with time waiting. Shown to clinicians in full.
+    weights: { CRITICAL: 100, URGENT: 60, ROUTINE: 10 }
+    sla: { CRITICAL: 1h, URGENT: 4h, ROUTINE: 24h }
+    label-urgency: { PNEUMONIA: URGENT, NORMAL: ROUTINE }
+    wait-bonus-per-hour: 0.5
+    wait-bonus-cap: 20
