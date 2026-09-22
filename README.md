@@ -43,6 +43,9 @@ Design rules:
 ```bash
 cp .env.example .env          # then change the values
 docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8080
+cd core-api && SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # :8090
+cd inference-service && uvicorn app.main:app --port 8000
+cd frontend && npm install && npm run dev                       # :5173
 ```
 
 The schema lives in `core-api/src/main/resources/db/migration/`. The application must
@@ -57,6 +60,9 @@ Per transaction, the API sets the tenant with
 `SET LOCAL app.current_org_id = '<uuid>'`. With no tenant set, queries return
 no rows.
 
+See `frontend/README.md` for demo logins and a gotcha around Keycloak's
+dev-mode storage not surviving container restarts.
+
 ## Data policy
 
 Never commit patient or imaging data, datasets, or model weights.
@@ -64,7 +70,11 @@ Never commit patient or imaging data, datasets, or model weights.
 
 ## Roadmap
 
-1. Architecture and database design (in progress)
-2. Backend API and inference pipeline
-3. Frontend dashboard and triage worklist
-4. Security and compliance
+1. Architecture and database design — done
+2. Backend API and inference pipeline — done
+3. Frontend dashboard and triage worklist — done (worklist, upload, study
+   detail with Grad-CAM overlay, clinician review, audit log)
+4. Security and compliance — ongoing
+5. Additional disease models beyond chest X-ray pneumonia (the platform
+   supports this via the inference service's adapter registry, but each
+   model needs its own dataset, training and validation work)
