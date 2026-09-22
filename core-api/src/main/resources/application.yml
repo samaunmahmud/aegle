@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${AEGLE_API_PORT:8090}
   error:
     include-message: never
     include-stacktrace: never
