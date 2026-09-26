@@ -1,5 +1,6 @@
 # Local development infrastructure for Aegle.
-# Usage: cp .env.example .env && docker compose up -d
+# Usage: cp .env.example .env && infra/tls/generate.sh && docker compose up -d
+# Every service speaks TLS only, with certificates from infra/tls/generate.sh.
 services:
   postgres:
     image: postgres:16
@@ -10,9 +11,21 @@ services:
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
     ports:
       - "5433:5432"   # 5433 on the host so it does not clash with a local Postgres
+    # Postgres insists its key is owned by the server user, so copy it in with the right owner.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        install -o postgres -g postgres -m 600 /certs/server.key /var/lib/postgresql/server.key &&
+        install -o postgres -g postgres -m 644 /certs/server.crt /var/lib/postgresql/server.crt &&
+        exec docker-entrypoint.sh postgres -c ssl=on -c ssl_min_protocol_version=TLSv1.2
+        -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key
+        -c hba_file=/etc/postgresql/pg_hba.conf
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./infra/tls/certs:/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d aegle"]
       interval: 5s
@@ -21,15 +34,16 @@ services:
 
   minio:
     image: quay.io/minio/minio:latest
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":9001" --certs-dir /certs/minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # web console
+      - "9000:9000"   # S3 API (https)
+      - "9001:9001"   # web console (https)
     volumes:
       - miniodata:/data
+      - ./infra/tls/certs:/certs:ro
 
   orthanc:
     image: orthancteam/orthanc:latest
@@ -37,11 +51,14 @@ services:
       ORTHANC__NAME: aegle-orthanc
       ORTHANC__AUTHENTICATION_ENABLED: "true"
       ORTHANC__REGISTERED_USERS: '{"${ORTHANC_USER}": "${ORTHANC_PASSWORD}"}'
+      ORTHANC__SSL_ENABLED: "true"
+      ORTHANC__SSL_CERTIFICATE: /certs/server-bundle.pem
     ports:
-      - "8042:8042"   # HTTP / DICOMweb
+      - "8042:8042"   # HTTPS / DICOMweb
       - "4242:4242"   # DICOM C-STORE
     volumes:
       - orthancdata:/var/lib/orthanc/db
+      - ./infra/tls/certs:/certs:ro
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
@@ -49,10 +66,14 @@ services:
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_CERTIFICATE_FILE: /certs/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/server.key
     ports:
-      - "8080:8080"
+      - "8443:8443"   # https only
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
+      - ./infra/tls/certs:/certs:ro
 
 # Named volumes (not bind mounts): avoids host file-ownership problems with Postgres.
 # Reset everything with: docker compose down -v

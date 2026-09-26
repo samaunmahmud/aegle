@@ -1,7 +1,7 @@
 # Aegle inference service
 
 Python (FastAPI + PyTorch) service that runs the registered models. The Core
-API calls it over HTTP; browsers never talk to it directly. Uploads are decoded
+API calls it over HTTPS; browsers never talk to it directly. Uploads are decoded
 in memory and are not written to disk or logged.
 
 ## Setup
@@ -53,8 +53,12 @@ border and marker cues, probability calibration, and external validation.
 
 ```bash
 export AEGLE_INFERENCE_TOKEN=...   # same value the Core API uses, at least 32 chars
-.venv/bin/uvicorn app.main:app --port 8000
+.venv/bin/uvicorn app.main:app --port 8000 \
+    --ssl-keyfile ../infra/tls/certs/server.key --ssl-certfile ../infra/tls/certs/server.crt
 ```
+
+TLS certificates come from `../infra/tls/generate.sh`; the Core API calls
+`https://localhost:8000` by default.
 
 `/v1/*` requires `Authorization: Bearer $AEGLE_INFERENCE_TOKEN`; without a token
 configured the service refuses to start. `/health` stays open for probes.

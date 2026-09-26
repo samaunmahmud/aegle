@@ -35,3 +35,6 @@ application-local.yml
 
 # Local infrastructure volumes
 .docker-data/
+
+# Local development TLS material (infra/tls/generate.sh)
+infra/tls/certs/

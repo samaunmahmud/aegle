@@ -51,12 +51,38 @@ Design rules:
 
 ```bash
 cp .env.example .env          # then change the values
+infra/tls/generate.sh         # local dev CA + certificates (once)
 set -a; source .env; set +a   # in every shell that starts a service below
-docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8080
-cd core-api && SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # :8090
-cd inference-service && uvicorn app.main:app --port 8000
-cd frontend && npm install && npm run dev                       # :5173
+docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8443
+cd core-api && SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # https://localhost:8090
+cd inference-service && .venv/bin/uvicorn app.main:app --port 8000 \
+    --ssl-keyfile ../infra/tls/certs/server.key --ssl-certfile ../infra/tls/certs/server.crt
+cd frontend && npm install && npm run dev                       # https://localhost:5173
 ```
+
+### TLS
+
+Every connection is encrypted, including the internal ones: browser to frontend and
+Keycloak, core-api to Postgres (`sslmode=verify-full`; the server's `pg_hba.conf`
+refuses non-TLS connections), MinIO, Keycloak and the inference service, and Orthanc's
+HTTP/DICOMweb API. No service answers plain HTTP.
+
+`infra/tls/generate.sh` creates a private development CA and one certificate for
+`localhost` and the compose service names, in the git-ignored `infra/tls/certs/`.
+`mvn spring-boot:run` makes core-api trust it through `certs/truststore.p12`. To let
+your browser trust it (macOS; Firefox keeps its own store):
+
+```bash
+security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db infra/tls/certs/ca.crt
+```
+
+Production uses real certificates from a secret store instead. Not yet covered: DICOM
+C-STORE on port 4242 is still unencrypted (DICOM TLS needs peer certificates per
+sending modality), and the dev CA key sits on disk next to the certificates.
+
+If a port is taken by something else, override it: `AEGLE_API_PORT` for core-api,
+`AEGLE_API_URL` for where the frontend proxies to, and a full `AEGLE_DB_URL` (keep the
+`sslmode` and `sslrootcert` parameters) for the database.
 
 The schema lives in `core-api/src/main/resources/db/migration/`. The application must
 connect as the `aegle_app` role (created by the migration, `NOLOGIN` until you

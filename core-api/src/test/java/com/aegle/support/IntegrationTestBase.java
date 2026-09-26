@@ -50,6 +50,7 @@ public abstract class IntegrationTestBase {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry r) {
+        r.add("server.ssl.enabled", () -> "false");
         r.add("spring.datasource.url", PG::getJdbcUrl);
         r.add("spring.datasource.password", () -> "test-app");
         r.add("spring.flyway.url", PG::getJdbcUrl);

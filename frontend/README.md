@@ -11,7 +11,7 @@ repo root, then `core-api` running with `SPRING_PROFILES_ACTIVE=dev`).
 ```bash
 npm install
 cp .env.example .env.local   # defaults already match the dev stack
-npm run dev                  # http://localhost:5173
+npm run dev                  # https://localhost:5173 (needs infra/tls/generate.sh first)
 ```
 
 Sign in with one of the demo users from `infra/keycloak/aegle-realm.json`
@@ -23,6 +23,13 @@ Sign in with one of the demo users from `infra/keycloak/aegle-realm.json`
 | paul.physician     | PHYSICIAN   |
 | alex.auditor       | AUDITOR     |
 | otto.other         | RADIOLOGIST (different org, for tenant-isolation checks) |
+
+The password (direct access) grant is disabled for `aegle-web`: sign-in only works
+through the browser.
+
+`npm run preview` serves the production build with the full header set, including the
+Content-Security-Policy (see `vite.config.ts`). Whatever hosts `dist/` in production
+must send the same headers.
 
 ## How auth works
 
