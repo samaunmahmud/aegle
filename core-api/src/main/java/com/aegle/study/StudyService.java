@@ -40,7 +40,7 @@ public class StudyService {
 
     public record PredictionView(UUID id, String label, double probability, String urgencyClass,
                                  String modelName, String modelVersion, String weightsSha256,
-                                 OffsetDateTime analysedAt) {}
+                                 String intendedUse, OffsetDateTime analysedAt) {}
 
     public record ReviewView(UUID id, UUID predictionId, String decision, String finalLabel, String comment,
                              OffsetDateTime reviewedAt, String reviewer) {}
@@ -194,14 +194,14 @@ public class StudyService {
 
             List<PredictionView> predictions = jdbc.sql("""
                     SELECT pr.id, pr.label, pr.probability, pr.urgency_class, m.name, mv.version, mv.weights_sha256,
-                           j.finished_at
+                           m.intended_use, j.finished_at
                     FROM predictions pr JOIN inference_jobs j ON j.id = pr.job_id
                     JOIN model_versions mv ON mv.id = j.model_version_id JOIN ai_models m ON m.id = mv.model_id
                     WHERE j.study_id = :id ORDER BY j.finished_at DESC, pr.probability DESC""")
                     .param("id", studyId)
                     .query((rs, i) -> new PredictionView(rs.getObject("id", UUID.class), rs.getString("label"),
                             Math.round(rs.getFloat("probability") * 10_000d) / 10_000d, rs.getString("urgency_class"), rs.getString("name"),
-                            rs.getString("version"), rs.getString("weights_sha256"),
+                            rs.getString("version"), rs.getString("weights_sha256"), rs.getString("intended_use"),
                             rs.getObject("finished_at", OffsetDateTime.class))).list();
 
             boolean hasHeatmap = jdbc.sql("""

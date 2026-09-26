@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app import imaging
+from app.models import brain_mri_tumor as bmt
 from app.models import chest_xray_pneumonia as cxp
 from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, build_resnet18
 
@@ -28,6 +29,11 @@ def client(tmp_path_factory, monkeypatch_module):
     torch.save(build_resnet18(2).state_dict(), model_dir / cxp.WEIGHTS_FILE)
     (model_dir / cxp.META_FILE).write_text(json.dumps({
         "version": "test", "labels": ["NORMAL", "PNEUMONIA"], "input_size": 64,
+        "mean": IMAGENET_MEAN, "std": IMAGENET_STD,
+    }))
+    torch.save(build_resnet18(3).state_dict(), model_dir / bmt.WEIGHTS_FILE)
+    (model_dir / bmt.META_FILE).write_text(json.dumps({
+        "version": "test", "labels": ["MENINGIOMA", "GLIOMA", "PITUITARY"], "input_size": 64,
         "mean": IMAGENET_MEAN, "std": IMAGENET_STD,
     }))
     monkeypatch_module.setenv("AEGLE_MODEL_DIR", str(model_dir))
@@ -53,13 +59,27 @@ def png_bytes(size=(120, 90)) -> bytes:
 def test_health_reports_loaded_model(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["models_loaded"] == ["chest-xray-pneumonia"]
+    assert sorted(body["models_loaded"]) == ["brain-mri-tumor-type", "chest-xray-pneumonia"]
 
 
 def test_list_models_exposes_intended_use_and_hash(client):
-    (m,) = client.get("/v1/models").json()["models"]
-    assert m["modality"] == "XR" and m["intended_use"]
-    assert len(m["weights_sha256"]) == 64
+    models = {m["id"]: m for m in client.get("/v1/models").json()["models"]}
+    assert (models["chest-xray-pneumonia"]["modality"], models["chest-xray-pneumonia"]["body_part"]) == ("XR", "CHEST")
+    assert (models["brain-mri-tumor-type"]["modality"], models["brain-mri-tumor-type"]["body_part"]) == ("MR", "BRAIN")
+    for m in models.values():
+        assert m["intended_use"] and len(m["weights_sha256"]) == 64
+    # The tumour model must say plainly that it cannot detect whether a tumour is present.
+    assert "cannot tell whether a tumour is present" in models["brain-mri-tumor-type"]["intended_use"]
+
+
+def test_brain_model_returns_the_three_tumour_types(client):
+    r = client.post("/v1/models/brain-mri-tumor-type/predict",
+                    files={"file": ("x.png", png_bytes((96, 96)), "image/png")})
+    assert r.status_code == 200
+    body = r.json()
+    assert {p["label"] for p in body["predictions"]} == {"MENINGIOMA", "GLIOMA", "PITUITARY"}
+    assert abs(sum(p["probability"] for p in body["predictions"]) - 1) < 1e-3
+    assert body["heatmap"]["target_label"] == body["top_label"]
 
 
 def test_predict_returns_sorted_probabilities_and_heatmap(client):

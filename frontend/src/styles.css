@@ -141,6 +141,24 @@ h2 {
   font-size: 0.8rem;
 }
 
+.intended-use {
+  background: var(--urgent-bg);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.intended-use summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.intended-use p {
+  margin: 0.4rem 0 0;
+}
+
 .audit-verify {
   margin: 0.75rem 0 1rem;
 }

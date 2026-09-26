@@ -3,3 +3,4 @@
 scikit-learn>=1.5
 pytest>=8.0
 httpx>=0.27
+h5py>=3.10         # reads the Figshare brain tumour .mat (v7.3) files

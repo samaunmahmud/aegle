@@ -92,7 +92,8 @@ class DicomIngestTest extends IntegrationTestBase {
         assertThat(worker.runOnce(org)).isEqualTo(1);
         mvc.perform(get("/api/studies/" + studyId).with(radiologist()))
                 .andExpect(jsonPath("$.study.status").value("READY"))
-                .andExpect(jsonPath("$.predictions[0].label").value("PNEUMONIA"));
+                .andExpect(jsonPath("$.predictions[0].label").value("PNEUMONIA"))
+                .andExpect(jsonPath("$.predictions[0].intendedUse").value("test model"));
     }
 
     @Test

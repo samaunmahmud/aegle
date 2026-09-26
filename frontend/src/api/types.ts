@@ -63,6 +63,7 @@ export interface PredictionView {
   modelName: string;
   modelVersion: string;
   weightsSha256: string;
+  intendedUse: string;
   analysedAt: string;
 }
 

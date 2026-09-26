@@ -91,6 +91,8 @@ aegle:
     # plus a capped bonus that grows with time waiting. Shown to clinicians in full.
     weights: { CRITICAL: 100, URGENT: 60, ROUTINE: 10 }
     sla: { CRITICAL: 1h, URGENT: 4h, ROUTINE: 24h }
-    label-urgency: { PNEUMONIA: URGENT, NORMAL: ROUTINE }
+    # Brain tumour types are all URGENT: that model assumes a tumour is present, so the
+    # type must not lower a study's priority. Clinical leads own these mappings.
+    label-urgency: { PNEUMONIA: URGENT, NORMAL: ROUTINE, GLIOMA: URGENT, MENINGIOMA: URGENT, PITUITARY: URGENT }
     wait-bonus-per-hour: 0.5
     wait-bonus-cap: 20

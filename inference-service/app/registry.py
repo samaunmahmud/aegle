@@ -6,13 +6,14 @@ import os
 from pathlib import Path
 
 from .base import ModelAdapter, ModelUnavailable
-from .models import chest_xray_pneumonia
+from .models import brain_mri_tumor, chest_xray_pneumonia
 
 log = logging.getLogger("aegle.registry")
 
 # model id -> adapter class (constructed with the model directory)
 ADAPTERS: dict[str, type[ModelAdapter]] = {
     chest_xray_pneumonia.MODEL_ID: chest_xray_pneumonia.ChestXrayPneumonia,
+    brain_mri_tumor.MODEL_ID: brain_mri_tumor.BrainMriTumorType,
 }
 
 

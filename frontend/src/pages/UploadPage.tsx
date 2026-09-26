@@ -100,7 +100,11 @@ export function UploadPage() {
           </label>
           <label>
             Body part
-            <input value={bodyPart} onChange={(e) => setBodyPart(e.target.value)} maxLength={64} />
+            <input value={bodyPart} onChange={(e) => setBodyPart(e.target.value)} maxLength={64} list="body-parts" />
+            <datalist id="body-parts">
+              <option value="CHEST" />
+              <option value="BRAIN" />
+            </datalist>
           </label>
         </div>
 

@@ -80,6 +80,14 @@ export function StudyDetailPage() {
         <div className="side-pane">
           <h2>AI findings</h2>
           {detail.predictions.length === 0 && <p className="muted">No predictions yet.</p>}
+          {[...new Map(detail.predictions.map((p) => [`${p.modelName} v${p.modelVersion}`, p.intendedUse]))].map(
+            ([model, intendedUse]) => (
+              <details key={model} className="intended-use" open>
+                <summary>What {model} can and cannot do</summary>
+                <p>{intendedUse}</p>
+              </details>
+            ),
+          )}
           {detail.predictions.map((p) => (
             <PredictionCard
               key={p.id}
