@@ -141,6 +141,22 @@ h2 {
   font-size: 0.8rem;
 }
 
+.audit-verify {
+  margin: 0.75rem 0 1rem;
+}
+
+.audit-verify p {
+  margin: 0.5rem 0 0;
+}
+
+.verify-ok {
+  color: var(--routine);
+  background: var(--routine-bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
 .error-text {
   color: var(--critical);
   background: var(--critical-bg);

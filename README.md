@@ -41,6 +41,11 @@ Design rules:
    must be `aegle-api`; the Core API presents a shared secret (`AEGLE_INFERENCE_TOKEN`)
    to the inference service, which refuses to start without one. Deactivated users
    (`users.active = false`) are refused within a minute, whatever their token says.
+7. The audit log is append-only and tamper-evident: each organisation's entries form a
+   SHA-256 hash chain. `GET /api/audit/verify` (auditors and admins; "Verify integrity"
+   on the audit page) recomputes it and returns the head hash to record elsewhere.
+8. Per-user rate limits (300 requests and 30 uploads per minute by default) and strict
+   security headers (deny-all CSP, no framing, HSTS) on every API response.
 
 ## Local development
 

@@ -1,6 +1,7 @@
 import { freshToken } from "../auth/keycloak";
 import type {
   AuditEntry,
+  AuditVerification,
   StudyDetail,
   UploadRequest,
   UploadResult,
@@ -122,4 +123,6 @@ export const api = {
     if (action) params.set("action", action);
     return request<AuditEntry[]>(`/api/audit?${params}`);
   },
+
+  verifyAudit: () => request<AuditVerification>("/api/audit/verify"),
 };

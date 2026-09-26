@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { AuditEntry } from "../api/types";
+import type { AuditEntry, AuditVerification } from "../api/types";
 
 export function AuditPage() {
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [verification, setVerification] = useState<AuditVerification | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     api
@@ -28,6 +30,17 @@ export function AuditPage() {
     }
   }
 
+  async function verify() {
+    setVerifying(true);
+    try {
+      setVerification(await api.verifyAudit());
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Integrity check failed to run");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   if (error) return <p className="error-text">{error}</p>;
   if (!entries) return <p>Loading audit log&hellip;</p>;
 
@@ -35,6 +48,23 @@ export function AuditPage() {
     <div>
       <h1>Audit log</h1>
       <p className="muted">Every read and write to patient data in this organisation, newest first.</p>
+      <div className="audit-verify">
+        <button onClick={verify} disabled={verifying}>
+          {verifying ? "Checking…" : "Verify integrity"}
+        </button>
+        {verification &&
+          (verification.intact ? (
+            <p className="verify-ok">
+              Chain intact: {verification.entries} entries. Head hash{" "}
+              <code>{verification.headHash}</code>. Record it elsewhere to detect a rewritten history later.
+            </p>
+          ) : (
+            <p className="error-text">
+              Tampering detected: the chain breaks at entry #{verification.firstBrokenSeq} of{" "}
+              {verification.entries}. Treat the log from that point on as untrustworthy.
+            </p>
+          ))}
+      </div>
       <table className="data-table">
         <thead>
           <tr>

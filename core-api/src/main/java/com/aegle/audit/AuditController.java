@@ -66,6 +66,25 @@ public class AuditController {
         });
     }
 
+    public record Verification(long entries, boolean intact, Long firstBrokenSeq, String headHash) {}
+
+    /**
+     * Recomputes the organisation's audit hash chain. {@code headHash} identifies the chain's
+     * current state; recording it elsewhere lets a later check detect a rewritten history.
+     */
+    @GetMapping("/verify")
+    public Verification verify() {
+        Actor actor = users.require();
+        return tenantTx.executeAs(actor.orgId(), () -> {
+            Verification v = jdbc.sql("SELECT entries, first_broken_seq, encode(head_hash, 'hex') AS head FROM audit_log_verify()")
+                    .query((rs, i) -> new Verification(rs.getLong("entries"), rs.getObject("first_broken_seq") == null,
+                            rs.getObject("first_broken_seq", Long.class), rs.getString("head"))).single();
+            audit.record(actor.orgId(), actor.userId(), "AUDIT_VERIFIED", "audit", "*",
+                    Map.of("entries", v.entries(), "intact", v.intact()));
+            return v;
+        });
+    }
+
     private JsonNode parse(String s) {
         try {
             return json.readTree(s);

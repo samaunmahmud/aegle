@@ -110,6 +110,13 @@ export interface UploadRequest {
   studyDate?: string;
 }
 
+export interface AuditVerification {
+  entries: number;
+  intact: boolean;
+  firstBrokenSeq: number | null;
+  headHash: string;
+}
+
 export interface AuditEntry {
   id: number;
   at: string;
