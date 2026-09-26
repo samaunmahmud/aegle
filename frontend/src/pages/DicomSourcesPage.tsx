@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { DicomSource } from "../api/types";
+import { Icon } from "../components/Icons";
+import { PageHeader } from "../components/PageHeader";
 
 // Mirrors the server's rule: 1-16 printable ASCII characters, no leading/trailing space.
 const AE_TITLE = /^[!-~]([ -~]{0,14}[!-~])?$/;
@@ -54,12 +56,11 @@ export function DicomSourcesPage() {
 
   return (
     <div>
-      <h1>DICOM senders</h1>
-      <p className="muted">
-        Modalities and PACS whose studies come into this organisation. Aegle matches each study by the
-        sender's calling AE title; studies from titles not listed here are not imported. Senders also
-        need a TLS client certificate from your administrator.
-      </p>
+      <PageHeader
+        icon={<Icon.Network />}
+        title="DICOM senders"
+        subtitle="Modalities and PACS whose studies flow into this organisation, matched by calling AE title. Senders also need a TLS client certificate."
+      />
       {error && <p className="error-text">{error}</p>}
 
       {sources === null ? (
@@ -96,7 +97,7 @@ export function DicomSourcesPage() {
       )}
 
       <form className="form" onSubmit={add}>
-        <h2>Register a sender</h2>
+        <div className="form-section-title">Register a sender</div>
         <div className="form-row">
           <label>
             Calling AE title

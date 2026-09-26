@@ -6,6 +6,7 @@ import { UploadPage } from "./pages/UploadPage";
 import { StudyDetailPage } from "./pages/StudyDetailPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DicomSourcesPage } from "./pages/DicomSourcesPage";
+import { ModelsPage } from "./pages/ModelsPage";
 
 function AuditRoute() {
   const { roles } = useAuth();
@@ -23,17 +24,26 @@ function AdminRoute() {
   return <DicomSourcesPage />;
 }
 
+/** Clinicians land on their worklist; admins and auditors, who see no patient data, on governance. */
+function Home() {
+  const { roles } = useAuth();
+  const clinician = roles.includes("RADIOLOGIST") || roles.includes("PHYSICIAN");
+  return <Navigate to={clinician ? "/worklist" : "/models"} replace />;
+}
+
 function Router() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/worklist" replace />} />
+        <Route index element={<Home />} />
         <Route path="worklist" element={<WorklistPage />} />
+        <Route path="worklist/:specialty" element={<WorklistPage />} />
+        <Route path="models" element={<ModelsPage />} />
         <Route path="upload" element={<UploadPage />} />
         <Route path="studies/:id" element={<StudyDetailPage />} />
         <Route path="audit" element={<AuditRoute />} />
         <Route path="admin/dicom" element={<AdminRoute />} />
-        <Route path="*" element={<Navigate to="/worklist" replace />} />
+        <Route path="*" element={<Home />} />
       </Route>
     </Routes>
   );

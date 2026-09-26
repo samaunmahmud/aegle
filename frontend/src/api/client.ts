@@ -1,8 +1,11 @@
 import { freshToken } from "../auth/keycloak";
+import type { Specialty } from "../specialties";
 import type {
   AuditEntry,
   AuditVerification,
   DicomSource,
+  Me,
+  ModelEntry,
   StudyDetail,
   UploadRequest,
   UploadResult,
@@ -51,10 +54,21 @@ async function requestBlob(path: string): Promise<Blob> {
 }
 
 export const api = {
-  me: () => request<{ userId: string; organisationId: string; roles: string[] }>("/api/me"),
+  me: () => request<Me>("/api/me"),
 
-  worklist: (states: WorklistState[] = ["OPEN", "IN_REVIEW"]) =>
-    request<WorklistPage>(`/api/worklist?state=${states.join(",")}&limit=200`),
+  worklist: (states: WorklistState[] = ["OPEN", "IN_REVIEW"], specialty?: Specialty) =>
+    request<WorklistPage>(
+      `/api/worklist?state=${states.join(",")}&limit=200${specialty ? `&specialty=${specialty}` : ""}`,
+    ),
+
+  models: () => request<ModelEntry[]>("/api/models"),
+
+  setModelEnabled: (modelId: string, enabled: boolean) =>
+    request<{ modelId: string; enabled: boolean }>(`/api/models/${modelId}/enabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    }),
 
   claim: (studyId: string) =>
     request<{ studyId: string; state: string }>(`/api/worklist/${studyId}/claim`, { method: "POST" }),

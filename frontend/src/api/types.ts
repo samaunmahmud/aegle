@@ -1,4 +1,6 @@
-// Mirrors the DTOs in core-api (StudyService, WorklistController, AuditController, MeController).
+// Mirrors the DTOs in core-api (StudyService, WorklistController, AuditController, MeController,
+// ModelCatalogController).
+import type { Specialty } from "../specialties";
 
 export type StudyStatus = "RECEIVED" | "QUEUED" | "ANALYZING" | "READY" | "REVIEWED" | "FAILED";
 export type WorklistState = "OPEN" | "IN_REVIEW" | "DONE";
@@ -8,12 +10,14 @@ export type ReviewDecision = "ACCEPT" | "REJECT" | "MODIFY";
 export interface Me {
   userId: string;
   organisationId: string;
+  organisationName: string;
   roles: string[];
 }
 
 export interface WorklistItem {
   studyId: string;
   patientMrn: string;
+  specialty: Specialty;
   modality: string;
   bodyPart: string;
   studyStatus: StudyStatus;
@@ -40,6 +44,7 @@ export interface StudySummary {
   id: string;
   status: StudyStatus;
   source: "UPLOAD" | "DICOM" | "DICOMWEB";
+  specialty: Specialty;
   modality: string;
   bodyPart: string;
   accessionNo: string | null;
@@ -134,4 +139,19 @@ export interface AuditEntry {
   entityId: string;
   ip: string | null;
   details: unknown;
+}
+
+export interface ModelEntry {
+  id: string;
+  name: string;
+  specialty: Specialty;
+  modality: string;
+  bodyPart: string | null;
+  task: string;
+  intendedUse: string;
+  activeVersion: string | null;
+  weightsSha256: string | null;
+  approvedAt: string | null;
+  metrics: Record<string, unknown> | null;
+  enabledForOrganisation: boolean;
 }

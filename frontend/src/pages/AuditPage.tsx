@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { AuditEntry, AuditVerification } from "../api/types";
+import { Icon } from "../components/Icons";
+import { PageHeader } from "../components/PageHeader";
+import { dateTime, titleCase } from "../format";
 
 export function AuditPage() {
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
@@ -46,8 +49,11 @@ export function AuditPage() {
 
   return (
     <div>
-      <h1>Audit log</h1>
-      <p className="muted">Every read and write to patient data in this organisation, newest first.</p>
+      <PageHeader
+        icon={<Icon.Audit />}
+        title="Audit log"
+        subtitle="Every read and write of patient data in this organisation, newest first. Append-only and hash-chained."
+      />
       <div className="audit-verify">
         <button onClick={verify} disabled={verifying}>
           {verifying ? "Checking…" : "Verify integrity"}
@@ -78,9 +84,9 @@ export function AuditPage() {
         <tbody>
           {entries.map((e) => (
             <tr key={e.id}>
-              <td>{new Date(e.at).toLocaleString()}</td>
+              <td className="numeric">{dateTime(e.at)}</td>
               <td>{e.actor}</td>
-              <td>{e.action}</td>
+              <td>{titleCase(e.action)}</td>
               <td>
                 {e.entityType}:{e.entityId}
               </td>
@@ -89,7 +95,7 @@ export function AuditPage() {
           ))}
         </tbody>
       </table>
-      <button onClick={loadMore} disabled={loadingMore}>
+      <button className="secondary" onClick={loadMore} disabled={loadingMore} style={{ marginTop: "0.75rem" }}>
         {loadingMore ? "Loading…" : "Load more"}
       </button>
     </div>

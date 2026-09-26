@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { PredictionView, ReviewDecision, StudyDetail } from "../api/types";
 import { StatusBadge, UrgencyBadge } from "../components/Badges";
+import { SpecialtyIcon } from "../components/Icons";
+import { age, dateTime, probability, titleCase } from "../format";
+import { specialtyById } from "../specialties";
 
 export function StudyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +13,7 @@ export function StudyDetailPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
+  const [opacity, setOpacity] = useState(0.7);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,98 +41,207 @@ export function StudyDetailPage() {
   }, [id]);
 
   if (error) return <p className="error-text">{error}</p>;
-  if (!detail || !id) return <p>Loading study&hellip;</p>;
+  if (!detail || !id) return <div className="panel empty-state">Loading study…</div>;
 
+  const { study, patient } = detail;
   const reviewedIds = new Set(detail.reviews.map((r) => r.predictionId));
+  const specialty = specialtyById(study.specialty);
+  const years = age(patient.dob);
+  const models = [...new Map(detail.predictions.map((p) => [`${p.modelName} v${p.modelVersion}`, p])).values()];
+  const failed = detail.jobs.filter((j) => j.status === "FAILED");
 
   return (
     <div>
-      <h1>
-        {detail.study.modality} / {detail.study.bodyPart} <StatusBadge status={detail.study.status} />
-      </h1>
-      <div className="study-meta">
-        <span>MRN: {detail.patient.mrn}</span>
-        {detail.patient.name && <span>Name: {detail.patient.name}</span>}
-        {detail.patient.dob && <span>DOB: {detail.patient.dob}</span>}
-        {detail.study.accessionNo && <span>Accession: {detail.study.accessionNo}</span>}
-        <span>
-          Received: {new Date(detail.study.createdAt).toLocaleString()}
-          {detail.study.source === "DICOM" ? " from a DICOM modality" : " by upload"}
-        </span>
+      <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
+        <Link to={specialty ? `/worklist/${specialty.slug}` : "/worklist"}>
+          ← {specialty ? `${specialty.name} worklist` : "Worklist"}
+        </Link>
       </div>
 
-      <div className="study-layout">
-        <div className="image-pane">
-          {imageUrl ? (
-            <div className="image-stack">
-              <img src={imageUrl} alt="Study" />
-              {heatmapUrl && showHeatmap && (
-                <img src={heatmapUrl} alt="Grad-CAM heatmap" className="heatmap-overlay" />
-              )}
-            </div>
-          ) : (
-            <p>Loading image&hellip;</p>
-          )}
-          {heatmapUrl && (
-            <label className="heatmap-toggle">
-              <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} />
-              Show Grad-CAM heatmap
-            </label>
-          )}
+      <section className="patient-banner" aria-label="Patient">
+        <div>
+          <div className="patient-name">{patient.name ?? "Name not recorded"}</div>
+          <div className="cell-secondary">Patient</div>
         </div>
+        <div className="banner-field">
+          <span className="banner-label">MRN</span>
+          <span className="banner-value">{patient.mrn}</span>
+        </div>
+        <div className="banner-field">
+          <span className="banner-label">DOB</span>
+          <span className="banner-value">
+            {patient.dob ? `${patient.dob}${years != null ? ` (${years}y)` : ""}` : "—"}
+          </span>
+        </div>
+        <div className="banner-field">
+          <span className="banner-label">Sex</span>
+          <span className="banner-value">{{ F: "Female", M: "Male", O: "Other" }[patient.sex ?? ""] ?? "Unknown"}</span>
+        </div>
+        <div className="banner-spacer" />
+        <div className="banner-field">
+          <span className="banner-label">Study</span>
+          <span className="banner-value">
+            {study.modality} · {study.bodyPart}
+          </span>
+        </div>
+        <div className="banner-field">
+          <span className="banner-label">Accession</span>
+          <span className="banner-value">{study.accessionNo ?? "—"}</span>
+        </div>
+        <div className="banner-field">
+          <span className="banner-label">Received</span>
+          <span className="banner-value">
+            {dateTime(study.createdAt)} · {study.source === "DICOM" ? "DICOM" : "Upload"}
+          </span>
+        </div>
+        <StatusBadge status={study.status} />
+      </section>
+
+      <div className="study-layout">
+        <section className="viewer" aria-label="Image viewer">
+          <div className="viewer-toolbar">
+            {specialty && (
+              <span className="specialty-chip" style={{ color: "#c8d3de" }}>
+                <SpecialtyIcon specialty={specialty.id} /> {specialty.name}
+              </span>
+            )}
+            {heatmapUrl ? (
+              <>
+                <label>
+                  <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} />
+                  Grad-CAM overlay
+                </label>
+                <label>
+                  Opacity
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={opacity}
+                    disabled={!showHeatmap}
+                    onChange={(e) => setOpacity(Number(e.target.value))}
+                    aria-label="Heatmap opacity"
+                  />
+                </label>
+              </>
+            ) : (
+              <span>No heatmap for this study</span>
+            )}
+          </div>
+          <div className="viewer-canvas">
+            <div className="viewer-overlay-text">
+              {study.modality} {study.bodyPart}
+              <br />
+              {study.studyDate ?? "date n/a"}
+              <br />
+              {patient.mrn}
+            </div>
+            {imageUrl ? (
+              <div className="image-stack">
+                <img src={imageUrl} alt={`${study.modality} ${study.bodyPart} image`} />
+                {heatmapUrl && showHeatmap && (
+                  <img
+                    src={heatmapUrl}
+                    alt="Grad-CAM heatmap overlay"
+                    className="heatmap-overlay"
+                    style={{ opacity }}
+                  />
+                )}
+              </div>
+            ) : (
+              <p style={{ color: "#9fb1c3" }}>Loading image…</p>
+            )}
+          </div>
+        </section>
 
         <div className="side-pane">
-          <h2>AI findings</h2>
-          {detail.predictions.length === 0 && <p className="muted">No predictions yet.</p>}
-          {[...new Map(detail.predictions.map((p) => [`${p.modelName} v${p.modelVersion}`, p.intendedUse]))].map(
-            ([model, intendedUse]) => (
-              <details key={model} className="intended-use" open>
-                <summary>What {model} can and cannot do</summary>
-                <p>{intendedUse}</p>
+          <section className="panel" aria-label="AI findings">
+            <div className="panel-header">
+              <h2>AI findings</h2>
+              <span className="cell-secondary">{detail.predictions.length} outputs</span>
+            </div>
+            {models.map((m) => (
+              <details key={m.modelName + m.modelVersion} className="intended-use" style={{ margin: "0.75rem 1rem 0" }} open>
+                <summary>
+                  {m.modelName} v{m.modelVersion}: what it can and cannot do
+                </summary>
+                <p>{m.intendedUse}</p>
               </details>
-            ),
-          )}
-          {detail.predictions.map((p) => (
-            <PredictionCard
-              key={p.id}
-              prediction={p}
-              alreadyReviewed={reviewedIds.has(p.id)}
-              onReviewed={() => api.study(id).then(setDetail)}
-            />
-          ))}
+            ))}
+            {detail.predictions.length === 0 ? (
+              <div className="panel-body muted">
+                {study.status === "RECEIVED"
+                  ? "No AI model is deployed for this study type."
+                  : "Analysis pending."}
+              </div>
+            ) : (
+              detail.predictions.map((p, i) => {
+                // The top output per model is the finding; the rest are shown quietly for context.
+                const isTop = detail.predictions.findIndex((q) => q.modelName === p.modelName) === i;
+                return isTop ? (
+                  <Finding
+                    key={p.id}
+                    prediction={p}
+                    alreadyReviewed={reviewedIds.has(p.id)}
+                    onReviewed={() => api.study(id).then(setDetail)}
+                  />
+                ) : (
+                  <div key={p.id} className="finding-minor">
+                    <div className="finding-headline">
+                      <span style={{ minWidth: "7rem" }}>{p.label}</span>
+                      <div className="prob-bar" aria-hidden="true">
+                        <div className="prob-fill" style={{ width: `${p.probability * 100}%` }} />
+                      </div>
+                      <span className="numeric">{probability(p.probability)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </section>
 
-          {detail.reviews.length > 0 && (
-            <>
-              <h2>Clinician reviews</h2>
-              {detail.reviews.map((r) => (
-                <div key={r.id} className="review-record">
-                  <strong>{r.decision}</strong> by {r.reviewer} on {new Date(r.reviewedAt).toLocaleString()}
-                  {r.finalLabel && <div>Final label: {r.finalLabel}</div>}
-                  {r.comment && <div className="muted">"{r.comment}"</div>}
-                </div>
-              ))}
-            </>
-          )}
-
-          {detail.jobs.some((j) => j.status === "FAILED") && (
-            <>
-              <h2>Inference issues</h2>
-              {detail.jobs
-                .filter((j) => j.status === "FAILED")
-                .map((j) => (
+          {failed.length > 0 && (
+            <section className="panel">
+              <div className="panel-header">
+                <h2>Analysis problems</h2>
+              </div>
+              <div className="panel-body">
+                {failed.map((j) => (
                   <p key={j.id} className="error-text">
                     Attempt {j.attempts}: {j.error ?? "Unknown error"}
                   </p>
                 ))}
-            </>
+              </div>
+            </section>
           )}
+
+          <section className="panel" aria-label="Review history">
+            <div className="panel-header">
+              <h2>Review history</h2>
+            </div>
+            {detail.reviews.length === 0 ? (
+              <div className="panel-body muted">Not reviewed yet.</div>
+            ) : (
+              <ul className="timeline">
+                {detail.reviews.map((r) => (
+                  <li key={r.id}>
+                    <strong>{titleCase(r.decision)}</strong> by {r.reviewer}
+                    <div className="cell-secondary">{dateTime(r.reviewedAt)}</div>
+                    {r.finalLabel && <div>Final label: {r.finalLabel}</div>}
+                    {r.comment && <div className="muted">“{r.comment}”</div>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-function PredictionCard({
+function Finding({
   prediction,
   alreadyReviewed,
   onReviewed,
@@ -142,7 +255,7 @@ function PredictionCard({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(!alreadyReviewed);
+  const [open, setOpen] = useState(false);
 
   async function submitReview() {
     setSubmitting(true);
@@ -162,42 +275,56 @@ function PredictionCard({
     }
   }
 
+  const pct = prediction.probability * 100;
+
   return (
-    <div className="prediction-card">
-      <div className="prediction-headline">
+    <div className="finding">
+      <div className="finding-headline">
+        <span className="finding-label">{prediction.label}</span>
         <UrgencyBadge urgency={prediction.urgencyClass} />
-        <strong>{prediction.label}</strong>
-        <span className="numeric">{(prediction.probability * 100).toFixed(1)}%</span>
+        <span className="numeric cell-primary">{probability(prediction.probability)}</span>
       </div>
-      <div className="muted small">
-        {prediction.modelName} v{prediction.modelVersion} &middot;{" "}
-        {new Date(prediction.analysedAt).toLocaleString()}
+      <div
+        className="prob-bar"
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        aria-label={`${prediction.label} probability`}
+      >
+        <div className={`prob-fill ${prediction.urgencyClass}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="cell-secondary">
+        {prediction.modelName} v{prediction.modelVersion} · {dateTime(prediction.analysedAt)}
       </div>
 
-      {alreadyReviewed && !open ? (
-        <button className="link-button" onClick={() => setOpen(true)}>
-          Reviewed — change?
+      {!open ? (
+        <button className="link-button small" onClick={() => setOpen(true)} style={{ marginTop: "0.4rem" }}>
+          {alreadyReviewed ? "Reviewed · change review" : "Review this finding"}
         </button>
-      ) : open ? (
+      ) : (
         <div className="review-form">
-          <div className="decision-buttons">
+          <div className="decision-buttons" role="radiogroup" aria-label="Decision">
             {(["ACCEPT", "MODIFY", "REJECT"] as ReviewDecision[]).map((d) => (
               <button
                 key={d}
-                className={decision === d ? "decision-selected" : ""}
                 type="button"
+                role="radio"
+                aria-checked={decision === d}
+                className={decision === d ? "decision-selected" : ""}
                 onClick={() => setDecision(d)}
               >
-                {d}
+                {titleCase(d)}
               </button>
             ))}
           </div>
           {decision === "MODIFY" && (
             <input
-              placeholder="Final label"
+              placeholder="Correct label"
               value={finalLabel}
               onChange={(e) => setFinalLabel(e.target.value)}
               maxLength={64}
+              aria-label="Correct label"
             />
           )}
           <textarea
@@ -205,13 +332,19 @@ function PredictionCard({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={2000}
+            aria-label="Comment"
           />
           {error && <p className="error-text">{error}</p>}
-          <button onClick={submitReview} disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit review"}
-          </button>
+          <div className="toolbar">
+            <button onClick={submitReview} disabled={submitting || (decision === "MODIFY" && !finalLabel)}>
+              {submitting ? "Submitting…" : "Sign review"}
+            </button>
+            <button className="secondary" type="button" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

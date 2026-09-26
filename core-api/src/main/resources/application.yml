@@ -53,7 +53,8 @@ management:
 
 aegle:
   cors:
-    allowed-origins: https://localhost:5173
+    # Browser origins allowed to call the API: the Vite dev server and the nginx frontend.
+    allowed-origins: ${AEGLE_CORS_ORIGINS:https://localhost:5173,https://localhost:5443}
   storage:
     endpoint: ${AEGLE_S3_ENDPOINT:https://localhost:9000}
     access-key: ${MINIO_ROOT_USER}

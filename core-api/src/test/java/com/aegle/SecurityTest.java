@@ -58,6 +58,20 @@ class SecurityTest extends IntegrationTestBase {
     }
 
     @Test
+    void writesFromTheFrontendOriginsAreAllowedAndOthersAreNot() throws Exception {
+        upload(radiologist(), "CORS-1", 70);
+        worker.runOnce(org);
+        UUID study = UUID.fromString(body(mvc.perform(get("/api/worklist").with(radiologist())).andReturn())
+                .at("/items/0/studyId").asText());
+        mvc.perform(post("/api/worklist/" + study + "/claim").header("Origin", "https://localhost:5443")
+                        .with(radiologist()))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/worklist/" + study + "/claim").header("Origin", "https://evil.example")
+                        .with(radiologist()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void tokensWithoutAValidTenantOrRoleAreRefused() throws Exception {
         var noOrg = jwt().jwt(j -> j.subject("u1").claim("realm_access", Map.of("roles", List.of("RADIOLOGIST"))));
         mvc.perform(get("/api/me").with(noOrg)).andExpect(status().isForbidden());
