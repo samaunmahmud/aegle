@@ -37,11 +37,16 @@ Design rules:
 3. AI output is a suggestion; every prediction has a clinician review state.
 4. Every prediction records the exact model version.
 5. The triage score is explainable (`worklist_items.priority_reason`).
+6. Every service call is authenticated: browsers present Keycloak tokens whose audience
+   must be `aegle-api`; the Core API presents a shared secret (`AEGLE_INFERENCE_TOKEN`)
+   to the inference service, which refuses to start without one. Deactivated users
+   (`users.active = false`) are refused within a minute, whatever their token says.
 
 ## Local development
 
 ```bash
 cp .env.example .env          # then change the values
+set -a; source .env; set +a   # in every shell that starts a service below
 docker compose up -d          # Postgres :5433, MinIO :9000/:9001, Orthanc :8042, Keycloak :8080
 cd core-api && SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # :8090
 cd inference-service && uvicorn app.main:app --port 8000

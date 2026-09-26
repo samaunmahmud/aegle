@@ -9,6 +9,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,9 @@ public class HttpInferenceClient implements InferenceClient {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) cfg.connectTimeout().toMillis());
         factory.setReadTimeout((int) cfg.readTimeout().toMillis());
-        this.http = RestClient.builder().baseUrl(cfg.baseUrl()).requestFactory(factory).build();
+        this.http = RestClient.builder().baseUrl(cfg.baseUrl()).requestFactory(factory)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.token())
+                .build();
         this.json = json;
     }
 

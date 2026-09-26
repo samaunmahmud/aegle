@@ -17,6 +17,9 @@ from app import imaging
 from app.models import chest_xray_pneumonia as cxp
 from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, build_resnet18
 
+TOKEN = "t" * 40
+AUTH = {"Authorization": f"Bearer {TOKEN}"}
+
 
 @pytest.fixture(scope="module")
 def client(tmp_path_factory, monkeypatch_module):
@@ -28,8 +31,9 @@ def client(tmp_path_factory, monkeypatch_module):
         "mean": IMAGENET_MEAN, "std": IMAGENET_STD,
     }))
     monkeypatch_module.setenv("AEGLE_MODEL_DIR", str(model_dir))
+    monkeypatch_module.setenv("AEGLE_INFERENCE_TOKEN", TOKEN)
     from app.main import app
-    with TestClient(app) as c:
+    with TestClient(app, headers=AUTH) as c:
         yield c
 
 
@@ -77,6 +81,27 @@ def test_heatmap_can_be_disabled(client):
     assert r.status_code == 200 and r.json()["heatmap"] is None
 
 
+@pytest.mark.parametrize("auth", [None, "Bearer wrong-token", f"Basic {TOKEN}", TOKEN])
+def test_model_endpoints_require_the_service_token(client, auth):
+    headers = {"Authorization": auth} if auth else {"Authorization": ""}
+    assert client.get("/v1/models", headers=headers).status_code == 401
+    r = client.post("/v1/models/chest-xray-pneumonia/predict", headers=headers,
+                    files={"file": ("x.png", png_bytes(), "image/png")})
+    assert r.status_code == 401
+
+
+@pytest.mark.parametrize("token", [None, "too-short"])
+def test_service_refuses_to_start_without_a_strong_token(monkeypatch, token):
+    if token is None:
+        monkeypatch.delenv("AEGLE_INFERENCE_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("AEGLE_INFERENCE_TOKEN", token)
+    from app.main import app
+    with pytest.raises(RuntimeError, match="AEGLE_INFERENCE_TOKEN"):
+        with TestClient(app):
+            pass
+
+
 def test_unknown_model_is_404(client):
     r = client.post("/v1/models/nope/predict", files={"file": ("x.png", png_bytes(), "image/png")})
     assert r.status_code == 404
@@ -90,8 +115,9 @@ def test_bad_upload_is_422(client, payload):
 
 def test_missing_weights_gives_503(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGLE_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("AEGLE_INFERENCE_TOKEN", TOKEN)
     from app.main import app
-    with TestClient(app) as c:
+    with TestClient(app, headers=AUTH) as c:
         assert c.get("/health").json()["status"] == "degraded"
         r = c.post("/v1/models/chest-xray-pneumonia/predict",
                    files={"file": ("x.png", png_bytes(), "image/png")})

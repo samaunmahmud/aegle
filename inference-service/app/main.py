@@ -2,24 +2,46 @@
 
 Internal service: called by the Core API, never directly by browsers.
 Uploads are processed in memory and are not written to disk or logged.
+
+Every /v1 call must carry `Authorization: Bearer <AEGLE_INFERENCE_TOKEN>`, a secret
+shared with the Core API. Without a configured token the service refuses to start.
 """
 from __future__ import annotations
 
 import base64
+import hmac
+import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 
 from .base import ModelUnavailable
 from .imaging import MAX_UPLOAD_BYTES, UnsupportedImage, decode_image
 from .registry import Registry
 
+MIN_TOKEN_LENGTH = 32
+
+
+def configured_token() -> str:
+    token = os.environ.get("AEGLE_INFERENCE_TOKEN", "")
+    if len(token) < MIN_TOKEN_LENGTH:
+        raise RuntimeError(
+            f"AEGLE_INFERENCE_TOKEN must be set to at least {MIN_TOKEN_LENGTH} characters")
+    return token
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.token = configured_token().encode()
     app.state.registry = Registry()
     yield
+
+
+def require_core_api(authorization: str = Header("")) -> None:
+    scheme, _, presented = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not hmac.compare_digest(presented.encode(), app.state.token):
+        raise HTTPException(401, "Unauthorized", headers={"WWW-Authenticate": "Bearer"})
 
 
 app = FastAPI(title="Aegle Inference Service", version="0.1.0", lifespan=lifespan)
@@ -35,13 +57,13 @@ def health():
     }
 
 
-@app.get("/v1/models")
+@app.get("/v1/models", dependencies=[Depends(require_core_api)])
 def list_models():
     reg: Registry = app.state.registry
     return {"models": [asdict(m.info) for m in reg.loaded()]}
 
 
-@app.post("/v1/models/{model_id}/predict")
+@app.post("/v1/models/{model_id}/predict", dependencies=[Depends(require_core_api)])
 async def predict(
     model_id: str,
     file: UploadFile = File(...),

@@ -26,8 +26,9 @@ public record AegleProperties(
     public record Storage(@NotBlank String endpoint, @NotBlank String accessKey,
                           @NotBlank String secretKey, @NotBlank String bucket) {}
 
-    public record Inference(@NotBlank String baseUrl, @NotNull Duration connectTimeout,
-                            @NotNull Duration readTimeout) {}
+    /** {@code token} is the shared secret the inference service requires on every model call. */
+    public record Inference(@NotBlank String baseUrl, @NotBlank String token,
+                            @NotNull Duration connectTimeout, @NotNull Duration readTimeout) {}
 
     /** Base64 keys, 32 bytes each. Missing or blank keys stop the application from starting. */
     public record Phi(@NotBlank String encKey, @NotBlank String hashKey) {}

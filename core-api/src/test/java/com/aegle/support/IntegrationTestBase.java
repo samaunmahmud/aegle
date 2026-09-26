@@ -58,6 +58,7 @@ public abstract class IntegrationTestBase {
         r.add("spring.flyway.locations", () -> "classpath:db/migration");
         r.add("aegle.storage.access-key", () -> "test");
         r.add("aegle.storage.secret-key", () -> "test-secret");
+        r.add("aegle.inference.token", () -> "test-inference-token");
         r.add("aegle.phi.enc-key", () -> key());
         r.add("aegle.phi.hash-key", () -> key());
         r.add("aegle.worker.enabled", () -> "false");          // tests drive the worker by hand

@@ -52,8 +52,12 @@ border and marker cues, probability calibration, and external validation.
 ## Run
 
 ```bash
+export AEGLE_INFERENCE_TOKEN=...   # same value the Core API uses, at least 32 chars
 .venv/bin/uvicorn app.main:app --port 8000
 ```
+
+`/v1/*` requires `Authorization: Bearer $AEGLE_INFERENCE_TOKEN`; without a token
+configured the service refuses to start. `/health` stays open for probes.
 
 | Endpoint | Purpose |
 |---|---|

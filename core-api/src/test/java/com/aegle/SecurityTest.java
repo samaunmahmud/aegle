@@ -66,6 +66,16 @@ class SecurityTest extends IntegrationTestBase {
                 .isEqualTo(org);
     }
 
+    @Test
+    void deactivatedUsersAreRefusedEvenWithAValidToken() throws Exception {
+        owner.update("""
+                INSERT INTO users (org_id, idp_subject, email, full_name, role, active)
+                VALUES (?, 'dave', 'dave@test.local', 'dave', 'RADIOLOGIST', false)""", org);
+        var dave = as("dave", org, "RADIOLOGIST");
+        mvc.perform(get("/api/me").with(dave)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/worklist").with(dave)).andExpect(status().isForbidden());
+    }
+
     // ---- roles
 
     @Test

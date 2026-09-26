@@ -25,6 +25,8 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${AEGLE_OIDC_ISSUER:http://localhost:8080/realms/aegle}
+          # Only tokens minted for this API; other clients in the realm are refused.
+          audiences: aegle-api
 
 management:
   endpoints:
@@ -45,6 +47,7 @@ aegle:
     bucket: aegle
   inference:
     base-url: ${AEGLE_INFERENCE_URL:http://localhost:8000}
+    token: ${AEGLE_INFERENCE_TOKEN}
     connect-timeout: 3s
     read-timeout: 120s
   phi:
