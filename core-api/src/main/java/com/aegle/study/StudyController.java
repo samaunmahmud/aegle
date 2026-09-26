@@ -62,9 +62,10 @@ public class StudyController {
     @GetMapping
     public List<StudyService.StudySummary> list(
             @RequestParam(required = false) @Pattern(regexp = "RECEIVED|QUEUED|ANALYZING|READY|REVIEWED|FAILED") String status,
+            @RequestParam(required = false) @Pattern(regexp = Specialties.PATTERN) String specialty,
             @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit,
             @RequestParam(defaultValue = "0") @Min(0) int offset) {
-        return studies.list(users.require(), status, limit, offset);
+        return studies.list(users.require(), status, specialty, limit, offset);
     }
 
     @GetMapping("/{id}")

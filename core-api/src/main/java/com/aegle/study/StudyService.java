@@ -34,8 +34,8 @@ public class StudyService {
 
     public record Patient(String mrn, String name, LocalDate dob, String sex) {}
 
-    public record StudySummary(UUID id, String status, String source, String modality, String bodyPart,
-                               String accessionNo, LocalDate studyDate, OffsetDateTime createdAt,
+    public record StudySummary(UUID id, String status, String source, String specialty, String modality,
+                               String bodyPart, String accessionNo, LocalDate studyDate, OffsetDateTime createdAt,
                                String patientMrn) {}
 
     public record PredictionView(UUID id, String label, double probability, String urgencyClass,
@@ -119,7 +119,9 @@ public class StudyService {
 
         List<UUID> models = jdbc.sql("""
                 SELECT mv.id FROM model_versions mv JOIN ai_models m ON m.id = mv.model_id
-                WHERE mv.active AND m.modality = :modality AND (m.body_part IS NULL OR m.body_part = :bodyPart)""")
+                WHERE mv.active AND m.modality = :modality AND (m.body_part IS NULL OR m.body_part = :bodyPart)
+                  AND NOT EXISTS (SELECT 1 FROM org_model_settings o
+                                  WHERE o.model_id = m.id AND NOT o.enabled)""")
                 .param("modality", modality).param("bodyPart", bodyPart)
                 .query(UUID.class).list();
         String status = models.isEmpty() ? "RECEIVED" : "QUEUED";
@@ -162,15 +164,17 @@ public class StudyService {
         return new UploadResult(studyId, status, models.size());
     }
 
-    public List<StudySummary> list(Actor actor, String status, int limit, int offset) {
+    public List<StudySummary> list(Actor actor, String status, String specialty, int limit, int offset) {
         return tenantTx.executeAs(actor.orgId(), () -> {
             List<StudySummary> rows = jdbc.sql("""
-                    SELECT s.id, s.status, s.source, s.modality, s.body_part, s.accession_no, s.study_date, s.created_at,
+                    SELECT s.id, s.status, s.source, aegle_specialty(s.modality, s.body_part) AS specialty,
+                           s.modality, s.body_part, s.accession_no, s.study_date, s.created_at,
                            p.mrn_encrypted
                     FROM studies s JOIN patients p ON p.id = s.patient_id
                     WHERE (CAST(:status AS text) IS NULL OR s.status = :status)
+                      AND (CAST(:specialty AS text) IS NULL OR aegle_specialty(s.modality, s.body_part) = :specialty)
                     ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset""")
-                    .param("status", status).param("limit", limit).param("offset", offset)
+                    .param("status", status).param("specialty", specialty).param("limit", limit).param("offset", offset)
                     .query((rs, i) -> summary(rs)).list();
             audit.record(actor.orgId(), actor.userId(), "STUDIES_LISTED", "study", "*", Map.of("count", rows.size()));
             return rows;
@@ -180,7 +184,8 @@ public class StudyService {
     public StudyDetail detail(Actor actor, UUID studyId) {
         return tenantTx.executeAs(actor.orgId(), () -> {
             var row = jdbc.sql("""
-                    SELECT s.id, s.status, s.source, s.modality, s.body_part, s.accession_no, s.study_date, s.created_at,
+                    SELECT s.id, s.status, s.source, aegle_specialty(s.modality, s.body_part) AS specialty,
+                           s.modality, s.body_part, s.accession_no, s.study_date, s.created_at,
                            p.mrn_encrypted, p.name_encrypted, p.dob_encrypted, p.sex
                     FROM studies s JOIN patients p ON p.id = s.patient_id WHERE s.id = :id""")
                     .param("id", studyId)
@@ -286,7 +291,7 @@ public class StudyService {
 
     private StudySummary summary(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new StudySummary(rs.getObject("id", UUID.class), rs.getString("status"), rs.getString("source"),
-                rs.getString("modality"),
+                rs.getString("specialty"), rs.getString("modality"),
                 rs.getString("body_part"), rs.getString("accession_no"), rs.getObject("study_date", LocalDate.class),
                 rs.getObject("created_at", OffsetDateTime.class),
                 phi.decrypt(rs.getBytes("mrn_encrypted"), "patients.mrn"));
