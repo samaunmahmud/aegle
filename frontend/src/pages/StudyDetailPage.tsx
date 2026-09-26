@@ -14,7 +14,7 @@ export function StudyDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    let revoke: string[] = [];
+    const revoke: string[] = [];
 
     api
       .study(id)
