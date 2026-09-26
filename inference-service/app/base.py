@@ -47,9 +47,14 @@ class ModelUnavailable(RuntimeError):
 
 
 class ModelAdapter(ABC):
+    #: "image" adapters receive a PIL image, "waveform" a waveform.Waveform (ECG),
+    #: "eeg" an eeg.Eeg.
+    INPUT_KIND = "image"
+
     @property
     @abstractmethod
     def info(self) -> ModelInfo: ...
 
     @abstractmethod
-    def predict(self, image: Image.Image, explain: bool = True) -> PredictionOutput: ...
+    def predict(self, image: Image.Image, explain: bool = True) -> PredictionOutput:
+        """`image` is a waveform.Waveform for adapters whose INPUT_KIND is "waveform"."""

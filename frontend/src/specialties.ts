@@ -44,7 +44,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     summary: "ECG rhythm analysis and echocardiography",
     planned: ["ECG arrhythmia detection (PTB-XL): needs waveform ingestion", "Echocardiogram ejection fraction (EchoNet-Dynamic): needs a data use agreement"],
     presets: [
-      { label: "12-lead ECG", modality: "ECG", bodyPart: "HEART", supported: false },
+      { label: "12-lead ECG", modality: "ECG", bodyPart: "HEART" },
       { label: "Echocardiogram", modality: "US", bodyPart: "HEART", supported: false },
     ],
   },
@@ -84,7 +84,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     name: "Gastroenterology",
     summary: "Endoscopy: polyps and inflammatory bowel disease",
     planned: ["Polyps and ulcerative colitis on endoscopy (HyperKvasir)"],
-    presets: [{ label: "Endoscopy frame", modality: "ES", bodyPart: "GI" }],
+    presets: [{ label: "Colonoscopy frame", modality: "ES", bodyPart: "COLON" }],
   },
   {
     id: "NEUROLOGY",
@@ -95,7 +95,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     presets: [
       { label: "Brain MRI (T1 contrast)", modality: "MR", bodyPart: "BRAIN" },
       { label: "Head CT", modality: "CT", bodyPart: "BRAIN" },
-      { label: "EEG", modality: "EEG", bodyPart: "BRAIN", supported: false },
+      { label: "Scalp EEG (EDF)", modality: "EEG", bodyPart: "BRAIN" },
     ],
   },
 ];

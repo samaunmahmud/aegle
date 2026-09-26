@@ -18,8 +18,12 @@ from dataclasses import asdict
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Response, UploadFile
 
 from .base import ModelUnavailable
-from .imaging import MAX_UPLOAD_BYTES, UnsupportedImage, decode_image
+from .imaging import MAX_UPLOAD_BYTES, UnsupportedImage, decode_image, is_grayscale
+from .eeg import UnsupportedEeg, is_edf, read_edf
+from .eeg import render as render_eeg
 from .registry import Registry
+from .waveform import UnsupportedWaveform, decode_waveform, is_waveform
+from .waveform import render as render_waveform
 
 MIN_TOKEN_LENGTH = 32
 
@@ -80,11 +84,11 @@ async def predict(
 
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     try:
-        image = decode_image(data)
-    except UnsupportedImage as exc:
+        subject = {"waveform": decode_waveform, "eeg": read_edf}.get(adapter.INPUT_KIND, decode_image)(data)
+    except (UnsupportedImage, UnsupportedWaveform, UnsupportedEeg) as exc:
         raise HTTPException(422, str(exc))
 
-    out = adapter.predict(image, explain=heatmap)
+    out = adapter.predict(subject, explain=heatmap)
     return {
         "model": asdict(adapter.info),
         "top_label": out.predictions[0].label,
@@ -101,12 +105,23 @@ async def predict(
 @app.post("/v1/render", dependencies=[Depends(require_core_api)])
 async def render(file: UploadFile = File(...)):
     """Decodes an image (DICOM included: windowing, MONOCHROME1 inversion) into a PNG
-    browsers can display. Grayscale, original size, no burned-in text added."""
+    browsers can display: grayscale stays grayscale, colour stays colour, original size,
+    no burned-in text added. ECGs (DICOM waveform or CSV) are drawn on standard paper."""
     data = await file.read(MAX_UPLOAD_BYTES + 1)
+    if is_edf(data):
+        try:
+            return Response(render_eeg(read_edf(data)), media_type="image/png")
+        except UnsupportedEeg as exc:
+            raise HTTPException(422, str(exc))
+    if is_waveform(data):
+        try:
+            return Response(render_waveform(decode_waveform(data)), media_type="image/png")
+        except UnsupportedWaveform as exc:
+            raise HTTPException(422, str(exc))
     try:
         image = decode_image(data)
     except UnsupportedImage as exc:
         raise HTTPException(422, str(exc))
     buf = io.BytesIO()
-    image.convert("L").save(buf, format="PNG", optimize=True)
+    (image.convert("L") if is_grayscale(image) else image).save(buf, format="PNG", optimize=True)
     return Response(buf.getvalue(), media_type="image/png")

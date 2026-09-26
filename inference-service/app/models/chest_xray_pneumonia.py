@@ -14,6 +14,7 @@ class ChestXrayPneumonia(ResNetClassifier):
     META_FILE = META_FILE
     MODALITY = "XR"
     BODY_PART = "CHEST"
+    GRAYSCALE = True
     TRAIN_COMMAND = "python -m training.train_pneumonia"
     INTENDED_USE = (
         "Research prototype. Flags chest radiographs that may show pneumonia so a "

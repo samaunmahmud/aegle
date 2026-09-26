@@ -204,3 +204,19 @@ def test_dicom_monochrome1_is_inverted_and_decoded():
 def test_decode_rejects_oversized_upload():
     with pytest.raises(imaging.UnsupportedImage):
         imaging.decode_image(b"\0" * (imaging.MAX_UPLOAD_BYTES + 1))
+
+
+def test_colour_is_preserved_for_colour_images_and_grayscale_stays_gray():
+    rgb = np.zeros((10, 12, 3), np.uint8); rgb[..., 0] = 200; rgb[..., 2] = 40
+    buf = io.BytesIO(); Image.fromarray(rgb).save(buf, format="PNG")
+    out = np.asarray(imaging.decode_image(buf.getvalue()))
+    assert out.shape == (10, 12, 3) and out[0, 0].tolist() == [200, 0, 40]
+    assert not imaging.is_grayscale(imaging.decode_image(buf.getvalue()))
+    assert imaging.is_grayscale(imaging.decode_image(png_bytes()))
+
+
+def test_render_keeps_colour(client):
+    rgb = np.zeros((8, 8, 3), np.uint8); rgb[..., 1] = 180
+    buf = io.BytesIO(); Image.fromarray(rgb).save(buf, format="PNG")
+    r = client.post("/v1/render", files={"file": ("x.png", buf.getvalue())})
+    assert Image.open(io.BytesIO(r.content)).mode == "RGB"

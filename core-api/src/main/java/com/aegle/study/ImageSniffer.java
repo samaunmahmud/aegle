@@ -1,8 +1,16 @@
 package com.aegle.study;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-/** Identifies supported uploads by content, not by the client-supplied name or type. */
+/**
+ * Identifies supported uploads by content, not by the client-supplied name or type: PNG,
+ * JPEG, DICOM (images and ECG waveforms), EDF (EEG), and ECG CSV exports (a header row of
+ * lead names).
+ */
 final class ImageSniffer {
 
     private ImageSniffer() {}
@@ -18,6 +26,27 @@ final class ImageSniffer {
         if (b.length > 132 && b[128] == 'D' && b[129] == 'I' && b[130] == 'C' && b[131] == 'M') {
             return Optional.of("application/dicom");
         }
+        // EDF: an 8-byte version field that is "0" padded with spaces, then the header length.
+        if (b.length >= 256 && new String(b, 0, 8, StandardCharsets.US_ASCII).equals("0       ")) {
+            return Optional.of("application/edf");
+        }
+        if (isEcgCsv(b)) {
+            return Optional.of("text/csv");
+        }
         return Optional.empty();
+    }
+
+    /** The first non-comment line names at least leads I, II and V1. */
+    private static boolean isEcgCsv(byte[] b) {
+        String head = new String(b, 0, Math.min(b.length, 2048), StandardCharsets.UTF_8);
+        if (head.chars().anyMatch(c -> c == 0 || (c < 0x20 && c != '\n' && c != '\r' && c != '\t'))) {
+            return false;
+        }
+        String first = head.lines().map(String::strip).filter(l -> !l.isEmpty() && !l.startsWith("#"))
+                .findFirst().orElse("");
+        Set<String> cells = Arrays.stream(first.split(","))
+                .map(c -> c.strip().toUpperCase().replace("LEAD", "").replaceAll("[ _-]", ""))
+                .collect(Collectors.toSet());
+        return cells.containsAll(Set.of("I", "II", "V1"));
     }
 }

@@ -14,6 +14,7 @@ class BrainMriTumorType(ResNetClassifier):
     META_FILE = META_FILE
     MODALITY = "MR"
     BODY_PART = "BRAIN"
+    GRAYSCALE = True
     TRAIN_COMMAND = "python -m training.train_brain_tumor"
     INTENDED_USE = (
         "Research prototype. Suggests the most likely type (meningioma, glioma or pituitary "

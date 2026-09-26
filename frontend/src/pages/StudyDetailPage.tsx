@@ -49,6 +49,9 @@ export function StudyDetailPage() {
   const years = age(patient.dob);
   const models = [...new Map(detail.predictions.map((p) => [`${p.modelName} v${p.modelVersion}`, p])).values()];
   const failed = detail.jobs.filter((j) => j.status === "FAILED");
+  // For recordings the AI view is a separate drawing (EEG: the most suspicious page), so it
+  // replaces the tracing instead of being blended over it.
+  const recording = ["ECG", "EEG"].includes(study.modality);
 
   return (
     <div>
@@ -105,7 +108,12 @@ export function StudyDetailPage() {
                 <SpecialtyIcon specialty={specialty.id} /> {specialty.name}
               </span>
             )}
-            {heatmapUrl ? (
+            {heatmapUrl && recording ? (
+              <label>
+                <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} />
+                AI view ({study.modality === "EEG" ? "probability timeline, most suspicious page" : "model attention"})
+              </label>
+            ) : heatmapUrl ? (
               <>
                 <label>
                   <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} />
@@ -137,7 +145,14 @@ export function StudyDetailPage() {
               <br />
               {patient.mrn}
             </div>
-            {imageUrl ? (
+            {imageUrl && recording ? (
+              <div className="image-stack">
+                <img
+                  src={heatmapUrl && showHeatmap ? heatmapUrl : imageUrl}
+                  alt={heatmapUrl && showHeatmap ? `${study.modality} with AI annotations` : `${study.modality} tracing`}
+                />
+              </div>
+            ) : imageUrl ? (
               <div className="image-stack">
                 <img src={imageUrl} alt={`${study.modality} ${study.bodyPart} image`} />
                 {heatmapUrl && showHeatmap && (

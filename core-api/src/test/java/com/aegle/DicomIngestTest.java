@@ -3,6 +3,7 @@ package com.aegle;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 class DicomIngestTest extends IntegrationTestBase {
@@ -146,6 +148,28 @@ class DicomIngestTest extends IntegrationTestBase {
                     .andExpect(content().bytes(StubInferenceClient.RENDERED_PNG));
         }
         assertThat(inference.renders.get()).isEqualTo(1);
+    }
+
+    @Test
+    void ecgCsvUploadsAreAcceptedAndShownAsARenderedTracing() throws Exception {
+        StringBuilder csv = new StringBuilder("# fs=500 units=mV\nI,II,III,aVR,aVL,aVF,V1,V2,V3,V4,V5,V6\n");
+        for (int i = 0; i < 1500; i++) {
+            csv.append("0.1,0.2,0.1,-0.1,0.0,0.1,0.3,0.5,0.6,0.7,0.6,0.5\n");
+        }
+        String body = mvc.perform(multipart("/api/studies")
+                        .file(new MockMultipartFile("file", "ecg.csv", "text/csv",
+                                csv.toString().getBytes()))
+                        .param("patientMrn", "ECG-1").param("modality", "ECG").param("bodyPart", "HEART")
+                        .with(radiologist()))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = json.readTree(body).get("studyId").asText();
+        assertThat(owner.queryForObject("SELECT mime_type FROM instances WHERE study_id = ?::uuid", String.class, id))
+                .isEqualTo("text/csv");
+        mvc.perform(get("/api/studies/" + id).with(radiologist()))
+                .andExpect(jsonPath("$.study.specialty").value("CARDIOLOGY"));
+        mvc.perform(get("/api/studies/" + id + "/image").with(radiologist()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG));
     }
 
     // ---- admin API

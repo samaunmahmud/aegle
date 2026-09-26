@@ -40,7 +40,7 @@ export function UploadPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!file || !patientMrn) {
-      setError("An image file and the patient's MRN are required.");
+      setError("A file and the patient's MRN are required.");
       return;
     }
     setSubmitting(true);
@@ -112,18 +112,28 @@ export function UploadPage() {
           </div>
         ))}
 
-        <div className="form-section-title">2 · Image</div>
+        <div className="form-section-title">
+          2 · {["ECG", "EEG"].includes(choice.preset.modality) ? "Recording" : "Image"}
+        </div>
         <label>
           <span>
-            Image file <span className="required">*</span>
+            {{ ECG: "ECG file", EEG: "EEG file" }[choice.preset.modality] ?? "Image file"}{" "}
+            <span className="required">*</span>
           </span>
           <input
             type="file"
-            accept="image/png,image/jpeg,.dcm,application/dicom"
+            accept="image/png,image/jpeg,.dcm,application/dicom,.csv,text/csv,.edf"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-          <span className="cell-secondary">PNG, JPEG or DICOM, up to 50 MB. File names are never stored.</span>
+          <span className="cell-secondary">
+            {choice.preset.modality === "ECG"
+              ? "DICOM 12-lead ECG, or a CSV with a header row of lead names (I, II, III, aVR, aVL, aVF, V1–V6) and optional “# fs=500 units=mV” line."
+              : choice.preset.modality === "EEG"
+                ? "EDF export with 10-20 electrodes (bipolar or referential), up to 50 MB."
+                : "PNG, JPEG or DICOM, up to 50 MB."}{" "}
+            File names are never stored.
+          </span>
         </label>
 
         <div className="form-section-title">3 · Patient</div>

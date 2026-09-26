@@ -27,6 +27,8 @@ class ResNetClassifier(ModelAdapter):
     BODY_PART: str | None
     INTENDED_USE: str
     TRAIN_COMMAND: str
+    # Radiology models were trained on grayscale; colour modalities keep RGB.
+    GRAYSCALE: bool = False
 
     def __init__(self, model_dir: Path):
         weights_path = model_dir / self.WEIGHTS_FILE
@@ -63,7 +65,8 @@ class ResNetClassifier(ModelAdapter):
         return self._info
 
     def _preprocess(self, image: Image.Image) -> torch.Tensor:
-        img = image.convert("RGB").resize((self._size, self._size), Image.BILINEAR)
+        img = image.convert("L").convert("RGB") if self.GRAYSCALE else image.convert("RGB")
+        img = img.resize((self._size, self._size), Image.BILINEAR)
         arr = np.asarray(img, dtype=np.float32) / 255.0
         x = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0)
         return (x - self._mean) / self._std

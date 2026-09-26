@@ -58,8 +58,12 @@ def _decode_dicom(data: bytes) -> Image.Image:
 
     if arr.ndim == 3 and getattr(ds, "SamplesPerPixel", 1) == 1:
         arr = arr[0]                      # multi-frame: use the first frame
-    if arr.ndim == 3:                     # colour DICOM: already 8-bit RGB
-        return Image.fromarray(arr.astype(np.uint8)).convert("L").convert("RGB")
+    if arr.ndim == 3:                     # colour DICOM (photographs, endoscopy, slide tiles)
+        pi = str(getattr(ds, "PhotometricInterpretation", "RGB"))
+        if pi.startswith("YBR"):
+            from pydicom.pixels import convert_color_space
+            arr = convert_color_space(arr, pi, "RGB")
+        return Image.fromarray(arr.astype(np.uint8)).convert("RGB")
 
     slope = float(getattr(ds, "RescaleSlope", 1) or 1)
     intercept = float(getattr(ds, "RescaleIntercept", 0) or 0)
@@ -72,7 +76,9 @@ def _decode_dicom(data: bytes) -> Image.Image:
 
 
 def decode_image(data: bytes) -> Image.Image:
-    """Return an RGB PIL image (grayscale replicated across channels)."""
+    """Return an RGB PIL image. Colour is preserved (it is diagnostic in dermatology,
+    fundus photography, endoscopy and pathology); grayscale sources come back with the
+    gray value replicated across channels. Models that expect grayscale convert it."""
     if not data:
         raise UnsupportedImage("Empty upload")
     if len(data) > MAX_UPLOAD_BYTES:
@@ -84,4 +90,11 @@ def decode_image(data: bytes) -> Image.Image:
         img.load()
     except Exception as exc:
         raise UnsupportedImage("Unsupported or corrupt image file") from exc
-    return img.convert("L").convert("RGB")
+    if img.mode in ("L", "I", "I;16", "F", "1", "LA"):
+        return img.convert("L").convert("RGB")
+    return img.convert("RGB")
+
+
+def is_grayscale(image: Image.Image) -> bool:
+    arr = np.asarray(image.convert("RGB"))
+    return bool((arr[..., 0] == arr[..., 1]).all() and (arr[..., 1] == arr[..., 2]).all())

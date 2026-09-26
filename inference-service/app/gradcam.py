@@ -10,10 +10,11 @@ from torch import nn
 
 
 def grad_cam(model: nn.Module, target_layer: nn.Module, x: torch.Tensor, class_idx: int) -> np.ndarray:
-    """Return a (h, w) map in [0, 1] showing which regions drove `class_idx`.
+    """Return a map in [0, 1] showing which regions drove `class_idx`.
 
-    `x` is a single preprocessed image, shape (1, C, H, W). The map has the
-    spatial size of `target_layer`'s output and must be resized by the caller.
+    `x` is a single preprocessed input: an image (1, C, H, W), giving an (h, w) map, or a
+    waveform (1, leads, T), giving a (t,) map over time. The map has the size of
+    `target_layer`'s output and must be resized by the caller.
     """
     activations: list[torch.Tensor] = []
     gradients: list[torch.Tensor] = []
@@ -31,8 +32,9 @@ def grad_cam(model: nn.Module, target_layer: nn.Module, x: torch.Tensor, class_i
     finally:
         handle.remove()
 
-    weights = gradients[0].mean(dim=(2, 3), keepdim=True)            # (1, C, 1, 1)
-    cam = torch.relu((weights * activations[0]).sum(dim=1))[0]       # (h, w)
+    spatial = tuple(range(2, gradients[0].ndim))
+    weights = gradients[0].mean(dim=spatial, keepdim=True)           # (1, C, 1[, 1])
+    cam = torch.relu((weights * activations[0]).sum(dim=1))[0]       # (h, w) or (t,)
     cam = cam.detach().cpu().numpy()
     peak = cam.max()
     return cam / peak if peak > 0 else np.zeros_like(cam)

@@ -8,11 +8,15 @@ import { dateTime } from "../format";
 import { SPECIALTIES } from "../specialties";
 
 // Metrics worth showing on a card, in order, with how to display them.
-const KEY_METRICS: { key: string; label: string; percent: boolean }[] = [
+const KEY_METRICS: { key: string; label: string; percent: boolean; plain?: boolean }[] = [
   { key: "accuracy", label: "Accuracy", percent: true },
   { key: "balanced_accuracy", label: "Balanced acc.", percent: true },
   { key: "auc", label: "AUC", percent: false },
   { key: "macro_auc_ovr", label: "Macro AUC", percent: false },
+  { key: "macro_auc", label: "Macro AUC", percent: false },
+  { key: "window_auc", label: "Window AUC", percent: false },
+  { key: "seizures_detected", label: "Seizures found", percent: true },
+  { key: "false_alarms_per_hour", label: "False alarms/h", percent: false, plain: true },
   { key: "sensitivity", label: "Sensitivity", percent: true },
   { key: "specificity", label: "Specificity", percent: true },
   { key: "ece", label: "Calib. error", percent: false },
@@ -63,7 +67,9 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
                 const v = test![k.key] as number;
                 return (
                   <div key={k.key} className="metric">
-                    <div className="metric-value">{k.percent ? `${(v * 100).toFixed(1)}%` : v.toFixed(3)}</div>
+                    <div className="metric-value">
+                      {k.percent ? `${(v * 100).toFixed(1)}%` : k.plain ? v.toFixed(2) : v.toFixed(3)}
+                    </div>
                     <div className="metric-label">{k.label}</div>
                   </div>
                 );

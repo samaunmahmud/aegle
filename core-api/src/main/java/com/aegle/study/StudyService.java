@@ -62,7 +62,7 @@ public class StudyService {
     public record NewStudy(String source, UploadRequest meta, String dicomStudyUid, String orthancStudyId,
                            List<NewInstance> instances) {}
 
-    static final String DICOM = "application/dicom";
+    static final java.util.Set<String> BROWSER_IMAGES = java.util.Set.of("image/png", "image/jpeg");
 
     private final JdbcClient jdbc;
     private final TenantTx tenantTx;
@@ -85,7 +85,7 @@ public class StudyService {
 
     public UploadResult upload(Actor actor, byte[] data, UploadRequest req) {
         String mime = ImageSniffer.detect(data)
-                .orElseThrow(() -> new BadRequestException("Unsupported file: expected PNG, JPEG or DICOM"));
+                .orElseThrow(() -> new BadRequestException("Unsupported file: expected PNG, JPEG, DICOM, EDF (EEG) or an ECG CSV"));
         NewStudy study = new NewStudy("UPLOAD", req, null, null, List.of(new NewInstance(data, mime, null, Map.of())));
         return tenantTx.executeAs(actor.orgId(), () -> create(actor.orgId(), actor.userId(), study));
     }
@@ -254,8 +254,9 @@ public class StudyService {
     }
 
     /**
-     * The study's first image. DICOM is returned as a PNG rendering (browsers cannot show
-     * DICOM), made by the inference service on first view and kept next to the original.
+     * The study's first image. Anything a browser cannot show (DICOM images and ECGs, ECG
+     * CSVs) is returned as a PNG rendering made by the inference service on first view and
+     * kept next to the original.
      */
     public ImageBytes image(Actor actor, UUID studyId) {
         record Ref(UUID id, String key, String mime, String previewKey) {}
@@ -270,7 +271,7 @@ public class StudyService {
             audit.record(actor.orgId(), actor.userId(), "IMAGE_VIEWED", "study", studyId.toString(), Map.of());
             return r;
         });
-        if (!DICOM.equals(ref.mime())) {
+        if (BROWSER_IMAGES.contains(ref.mime())) {
             return new ImageBytes(store.get(ref.key()), ref.mime());
         }
         if (ref.previewKey() != null) {
