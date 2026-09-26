@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 class TriagePolicyTest {
 
-    private final TriagePolicy policy = new TriagePolicy(new AegleProperties(null, null, null, null, null, null,
+    private final TriagePolicy policy = new TriagePolicy(new AegleProperties(null, null, null, null, null, null, null,
             new AegleProperties.Triage(
                     Map.of(Urgency.CRITICAL, 100.0, Urgency.URGENT, 60.0, Urgency.ROUTINE, 10.0),
                     Map.of(Urgency.CRITICAL, Duration.ofHours(1), Urgency.URGENT, Duration.ofHours(4),

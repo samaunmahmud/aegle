@@ -2,10 +2,12 @@ package com.aegle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +41,20 @@ class SecurityTest extends IntegrationTestBase {
     void healthIsPublicButNothingElseIs() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
         mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void responsesForbidScriptsFramingAndCaching() throws Exception {
+        mvc.perform(get("/api/me").with(radiologist()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
+                .andExpect(header().exists("Permissions-Policy"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
+        mvc.perform(get("/api/me").secure(true).with(radiologist()))
+                .andExpect(header().string("Strict-Transport-Security", "max-age=31536000 ; includeSubDomains"));
     }
 
     @Test

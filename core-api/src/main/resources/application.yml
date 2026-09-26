@@ -63,6 +63,9 @@ aegle:
     auto-activate: false                 # a model version must be approved before it runs
     sync-interval-ms: 60000
     sync-initial-delay-ms: 2000
+  rate-limit:
+    requests-per-minute: 300   # per user, all /api calls
+    uploads-per-minute: 30     # per user, additionally, for POST /api/studies
   triage:
     # Priority = sum over labels of probability x weight of that label's urgency class,
     # plus a capped bonus that grows with time waiting. Shown to clinicians in full.

@@ -4,6 +4,7 @@ import com.aegle.inference.Urgency;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ public record AegleProperties(
         @Valid @NotNull Phi phi,
         @Valid @NotNull Worker worker,
         @Valid @NotNull Models models,
+        @Valid @NotNull RateLimit rateLimit,
         @Valid @NotNull Triage triage) {
 
     public record Cors(List<String> allowedOrigins) {}
@@ -37,6 +39,8 @@ public record AegleProperties(
                          @NotNull Duration retryBackoff, @NotNull Duration staleAfter) {}
 
     public record Models(boolean autoActivate, long syncIntervalMs, long syncInitialDelayMs) {}
+
+    public record RateLimit(@Positive int requestsPerMinute, @Positive int uploadsPerMinute) {}
 
     public record Triage(@NotNull Map<Urgency, Double> weights,
                          @NotNull Map<Urgency, Duration> sla,
