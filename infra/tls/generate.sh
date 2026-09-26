@@ -5,6 +5,7 @@
 #   ca.crt / ca.key          a private "Aegle Local Dev CA" (never trust it outside dev)
 #   server.crt / server.key  one certificate for localhost and the compose service names
 #   server-bundle.pem        certificate + key in one file (Orthanc)
+#   modality.crt / .key      a client certificate for a test DICOM modality (C-STORE over TLS)
 #   minio/                   the layout MinIO's --certs-dir expects
 #   truststore.p12           the JDK's public CAs plus the dev CA, for core-api (password: changeit)
 #
@@ -30,13 +31,26 @@ openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
 cat > "$OUT/server.ext" <<'EXT'
 basicConstraints = critical, CA:FALSE
 keyUsage = critical, digitalSignature
-extendedKeyUsage = serverAuth
+# clientAuth too: Orthanc is also a DICOM client (C-MOVE, forwarding) with this certificate.
+extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = DNS:localhost, DNS:postgres, DNS:minio, DNS:keycloak, DNS:orthanc, DNS:host.docker.internal, IP:127.0.0.1, IP:::1
 EXT
 # 397 days: the longest validity browsers accept for a server certificate.
 openssl x509 -req -in "$OUT/server.csr" -CA "$OUT/ca.crt" -CAkey "$OUT/ca.key" -CAcreateserial \
     -days 397 -extfile "$OUT/server.ext" -out "$OUT/server.crt" 2>/dev/null
-rm -f "$OUT/server.csr" "$OUT/server.ext" "$OUT/ca.srl"
+rm -f "$OUT/server.csr" "$OUT/server.ext"
+
+# Every DICOM sender needs its own certificate from this CA; Orthanc refuses the rest.
+openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+    -keyout "$OUT/modality.key" -out "$OUT/modality.csr" -subj "/CN=aegle-dev-modality" 2>/dev/null
+cat > "$OUT/modality.ext" <<'EXT'
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature
+extendedKeyUsage = clientAuth, serverAuth
+EXT
+openssl x509 -req -in "$OUT/modality.csr" -CA "$OUT/ca.crt" -CAkey "$OUT/ca.key" -CAcreateserial \
+    -days 397 -extfile "$OUT/modality.ext" -out "$OUT/modality.crt" 2>/dev/null
+rm -f "$OUT/modality.csr" "$OUT/modality.ext" "$OUT/ca.srl"
 
 cat "$OUT/server.crt" "$OUT/server.key" > "$OUT/server-bundle.pem"
 cp "$OUT/server.crt" "$OUT/minio/public.crt"

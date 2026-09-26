@@ -43,10 +43,12 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
-        "https://localhost:5173/*"
+        "https://localhost:5173/*",
+        "https://localhost:5443/*"
       ],
       "webOrigins": [
-        "https://localhost:5173"
+        "https://localhost:5173",
+        "https://localhost:5443"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"

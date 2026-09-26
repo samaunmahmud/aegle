@@ -1,0 +1,40 @@
+# ${AEGLE_API_UPSTREAM}: core-api's https URL. Certificates are mounted at /certs.
+server {
+    listen 8443 ssl;
+    http2 on;
+    server_name localhost;
+    server_tokens off;
+
+    ssl_certificate     /certs/server.crt;
+    ssl_certificate_key /certs/server.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    root /usr/share/nginx/html;
+
+    # Hashed file names: safe to cache forever.
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Client-side routes all serve the app shell, which must never be cached stale.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+
+    # API responses keep core-api's own (stricter) headers.
+    location /api/ {
+        proxy_pass ${AEGLE_API_UPSTREAM};
+        proxy_ssl_verify              on;
+        proxy_ssl_trusted_certificate /certs/ca.crt;
+        proxy_ssl_name                localhost;
+        proxy_ssl_server_name         on;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        client_max_body_size 52m;
+        proxy_read_timeout   130s;
+    }
+}

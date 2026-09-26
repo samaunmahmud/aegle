@@ -27,9 +27,10 @@ Sign in with one of the demo users from `infra/keycloak/aegle-realm.json`
 The password (direct access) grant is disabled for `aegle-web`: sign-in only works
 through the browser.
 
-`npm run preview` serves the production build with the full header set, including the
-Content-Security-Policy (see `vite.config.ts`). Whatever hosts `dist/` in production
-must send the same headers.
+Security headers, including the Content-Security-Policy, are defined once in
+`security-headers.ts`. `npm run preview` sends them, and the production image
+(`Dockerfile`, nginx; see the root README) writes them into its nginx config at
+build time.
 
 ## How auth works
 

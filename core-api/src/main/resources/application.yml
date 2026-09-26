@@ -6,6 +6,13 @@ server:
     certificate: file:${AEGLE_TLS_DIR:../infra/tls/certs}/server.crt
     certificate-private-key: file:${AEGLE_TLS_DIR:../infra/tls/certs}/server.key
     enabled-protocols: TLSv1.3,TLSv1.2
+  # Behind the nginx frontend, take the client IP (audit log, rate limits) from
+  # X-Forwarded-For, but only when the connection comes from a trusted proxy address:
+  # anyone else could forge the header.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${AEGLE_TRUSTED_PROXIES:127\.0\.0\.1|0:0:0:0:0:0:0:1}
   error:
     include-message: never
     include-stacktrace: never

@@ -1,60 +1,50 @@
 package com.aegle.security;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.LongSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
 /**
- * In-memory token buckets, one per key. Each bucket holds up to {@code perMinute} tokens and
- * refills continuously, so short bursts are allowed but the sustained rate is capped.
- *
- * Per-instance only: with several API replicas the effective limit is multiplied, which is
- * acceptable for abuse protection but not for quotas.
+ * Token buckets kept in Postgres ({@code rate_limit_acquire}, migration V4), so every API
+ * instance draws from the same budget. One round trip per check.
  */
+@Component
 public class RateLimiter {
 
-    private static final long IDLE_EVICT_NANOS = 10L * 60 * 1_000_000_000;
-    private static final int EVICT_THRESHOLD = 10_000;
+    private static final Logger log = LoggerFactory.getLogger(RateLimiter.class);
 
-    private final double capacity;
-    private final double tokensPerNano;
-    private final LongSupplier clock;
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final JdbcClient jdbc;
 
-    private static final class Bucket {
-        double tokens;
-        long updated;
+    public RateLimiter(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
 
-        Bucket(double tokens, long updated) {
-            this.tokens = tokens;
-            this.updated = updated;
+    /**
+     * Takes one call from {@code key}'s bucket in {@code bucket}, which allows bursts of up
+     * to {@code perMinute} and refills at that rate. Returns 0 if the call is allowed,
+     * otherwise the whole seconds to wait.
+     */
+    public long tryAcquire(String bucket, String key, int perMinute) {
+        try {
+            double wait = jdbc.sql("SELECT rate_limit_acquire(:key, :capacity, :perSecond)")
+                    .param("key", bucket + "|" + key)
+                    .param("capacity", (double) perMinute)
+                    .param("perSecond", perMinute / 60.0)
+                    .query(Double.class).single();
+            return wait <= 0 ? 0 : Math.max(1, (long) Math.ceil(wait));
+        } catch (DataAccessException e) {
+            // Without the database the request cannot succeed anyway; let it fail on its own terms.
+            log.warn("Rate limit check unavailable ({}), allowing request", e.getClass().getSimpleName());
+            return 0;
         }
     }
 
-    public RateLimiter(int perMinute, LongSupplier clock) {
-        if (perMinute <= 0) {
-            throw new IllegalArgumentException("perMinute must be positive");
-        }
-        this.capacity = perMinute;
-        this.tokensPerNano = perMinute / 60e9;
-        this.clock = clock;
-    }
-
-    /** Returns 0 if the call is allowed, otherwise the seconds to wait before retrying. */
-    public long tryAcquire(String key) {
-        long now = clock.getAsLong();
-        if (buckets.size() > EVICT_THRESHOLD) {
-            buckets.values().removeIf(b -> now - b.updated > IDLE_EVICT_NANOS);
-        }
-        Bucket b = buckets.computeIfAbsent(key, k -> new Bucket(capacity, now));
-        synchronized (b) {
-            b.tokens = Math.min(capacity, b.tokens + (now - b.updated) * tokensPerNano);
-            b.updated = now;
-            if (b.tokens >= 1) {
-                b.tokens -= 1;
-                return 0;
-            }
-            return Math.max(1, (long) Math.ceil((1 - b.tokens) / tokensPerNano / 1e9));
-        }
+    /** A bucket idle for a minute is full again, so its row can go. */
+    @Scheduled(fixedDelay = 300_000, initialDelay = 300_000)
+    void purgeIdle() {
+        jdbc.sql("DELETE FROM rate_limit_buckets WHERE updated_at < now() - interval '5 minutes'").update();
     }
 }

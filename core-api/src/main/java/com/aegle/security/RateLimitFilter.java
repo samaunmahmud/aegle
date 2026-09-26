@@ -16,16 +16,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Caps request rates on /api per signed-in user (per client IP before authentication), with
  * a tighter separate limit on uploads. Runs after token authentication so it can key on the
- * user. Over the limit: 429 with Retry-After.
+ * user. Limits are shared across API instances (see {@link RateLimiter}). Over the limit:
+ * 429 with Retry-After.
  */
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final RateLimiter requests;
-    private final RateLimiter uploads;
+    private final RateLimiter limiter;
+    private final AegleProperties.RateLimit cfg;
 
-    public RateLimitFilter(AegleProperties.RateLimit cfg) {
-        this.requests = new RateLimiter(cfg.requestsPerMinute(), System::nanoTime);
-        this.uploads = new RateLimiter(cfg.uploadsPerMinute(), System::nanoTime);
+    public RateLimitFilter(RateLimiter limiter, AegleProperties.RateLimit cfg) {
+        this.limiter = limiter;
+        this.cfg = cfg;
     }
 
     @Override
@@ -37,9 +38,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String key = callerKey(request);
-        long wait = requests.tryAcquire(key);
+        long wait = limiter.tryAcquire("requests", key, cfg.requestsPerMinute());
         if (wait == 0 && isUpload(request)) {
-            wait = uploads.tryAcquire(key);
+            wait = limiter.tryAcquire("uploads", key, cfg.uploadsPerMinute());
         }
         if (wait > 0) {
             response.setStatus(429);

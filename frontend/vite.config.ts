@@ -3,10 +3,12 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import https from "node:https";
 import path from "node:path";
+import { keycloakOrigin, securityHeaders } from "./security-headers.ts";
 
 // Frontend runs on https://localhost:5173 (matches the Keycloak client's redirect URI and
 // the core API's CORS config). API calls are proxied to core-api so the browser only
 // ever talks to one origin. Everything is TLS, using infra/tls/generate.sh's certificates.
+// Production serves dist/ from the nginx image instead (Dockerfile, nginx.conf.template).
 const CERTS = path.resolve(import.meta.dirname, "../infra/tls/certs");
 
 function cert(file: string): Buffer {
@@ -17,11 +19,15 @@ function cert(file: string): Buffer {
   }
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const keycloak = new URL(env.VITE_KEYCLOAK_URL || "https://localhost:8443").origin;
-  const tls = { key: cert("server.key"), cert: cert("server.crt") };
+  const plugins = [react()];
+  if (command === "build") {
+    return { plugins };   // certificates are only needed to serve
+  }
 
+  const keycloak = keycloakOrigin(env.VITE_KEYCLOAK_URL);
+  const tls = { key: cert("server.key"), cert: cert("server.crt") };
   const proxy = {
     "/api": {
       target: env.AEGLE_API_URL || "https://localhost:8090",
@@ -31,39 +37,9 @@ export default defineConfig(({ mode }) => {
     },
   };
 
-  const headers = {
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "no-referrer",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  };
-
-  // The production bundle's policy: only our own scripts and styles, API calls to our
-  // origin and Keycloak, images from blob: URLs (study images and heatmaps). The dev
-  // server omits it because React fast-refresh injects an inline script. Whatever serves
-  // dist/ in production must send these same headers.
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self'",
-    "img-src 'self' blob: data:",
-    `connect-src 'self' ${keycloak}`,
-    `frame-src ${keycloak}`,
-    "object-src 'none'",
-    "base-uri 'self'",
-    `form-action 'self' ${keycloak}`,
-    "frame-ancestors 'none'",
-  ].join("; ");
-
   return {
-    plugins: [react()],
-    server: { port: 5173, strictPort: true, https: tls, headers, proxy },
-    preview: {
-      port: 5173,
-      strictPort: true,
-      https: tls,
-      headers: { ...headers, "Content-Security-Policy": csp, "X-Frame-Options": "DENY" },
-      proxy,
-    },
+    plugins,
+    server: { port: 5173, strictPort: true, https: tls, headers: securityHeaders(keycloak, false), proxy },
+    preview: { port: 5173, strictPort: true, https: tls, headers: securityHeaders(keycloak, true), proxy },
   };
 });

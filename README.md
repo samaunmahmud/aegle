@@ -44,8 +44,9 @@ Design rules:
 7. The audit log is append-only and tamper-evident: each organisation's entries form a
    SHA-256 hash chain. `GET /api/audit/verify` (auditors and admins; "Verify integrity"
    on the audit page) recomputes it and returns the head hash to record elsewhere.
-8. Per-user rate limits (300 requests and 30 uploads per minute by default) and strict
-   security headers (deny-all CSP, no framing, HSTS) on every API response.
+8. Per-user rate limits (300 requests and 30 uploads per minute by default), kept in
+   Postgres so they hold across any number of API instances, and strict security
+   headers (deny-all CSP, no framing, HSTS) on every API response.
 
 ## Local development
 
@@ -67,6 +68,10 @@ Keycloak, core-api to Postgres (`sslmode=verify-full`; the server's `pg_hba.conf
 refuses non-TLS connections), MinIO, Keycloak and the inference service, and Orthanc's
 HTTP/DICOMweb API. No service answers plain HTTP.
 
+DICOM on port 4242 is mutual TLS: a sending modality must present a certificate issued
+by the CA, or Orthanc drops the association. `generate.sh` issues a sample one
+(`certs/modality.crt` and `.key`); issue one per real modality the same way.
+
 `infra/tls/generate.sh` creates a private development CA and one certificate for
 `localhost` and the compose service names, in the git-ignored `infra/tls/certs/`.
 `mvn spring-boot:run` makes core-api trust it through `certs/truststore.p12`. To let
@@ -76,9 +81,21 @@ your browser trust it (macOS; Firefox keeps its own store):
 security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db infra/tls/certs/ca.crt
 ```
 
-Production uses real certificates from a secret store instead. Not yet covered: DICOM
-C-STORE on port 4242 is still unencrypted (DICOM TLS needs peer certificates per
-sending modality), and the dev CA key sits on disk next to the certificates.
+Production uses real certificates from a secret store instead; the dev CA key sits on
+disk next to the certificates and must never be trusted outside development.
+
+### Production-style frontend
+
+```bash
+docker compose --profile web up -d --build web   # https://localhost:5443
+```
+
+nginx serves the built app with the full header set (including the CSP, generated from
+`frontend/security-headers.ts`, the same source the Vite servers use) and proxies `/api`
+to core-api over verified TLS (`AEGLE_API_UPSTREAM`, default
+`https://host.docker.internal:8090`). It replaces any client-sent `X-Forwarded-For`;
+core-api only believes that header from `AEGLE_TRUSTED_PROXIES` (a regex, loopback by
+default), so audit entries record the real client address and nobody else can forge it.
 
 If a port is taken by something else, override it: `AEGLE_API_PORT` for core-api,
 `AEGLE_API_URL` for where the frontend proxies to, and a full `AEGLE_DB_URL` (keep the

@@ -53,9 +53,15 @@ services:
       ORTHANC__REGISTERED_USERS: '{"${ORTHANC_USER}": "${ORTHANC_PASSWORD}"}'
       ORTHANC__SSL_ENABLED: "true"
       ORTHANC__SSL_CERTIFICATE: /certs/server-bundle.pem
+      # DICOM over TLS only, and only from senders holding a certificate from our CA.
+      ORTHANC__DICOM_TLS_ENABLED: "true"
+      ORTHANC__DICOM_TLS_CERTIFICATE: /certs/server.crt
+      ORTHANC__DICOM_TLS_PRIVATE_KEY: /certs/server.key
+      ORTHANC__DICOM_TLS_TRUSTED_CERTIFICATES: /certs/ca.crt
+      ORTHANC__DICOM_TLS_REMOTE_CERTIFICATE_REQUIRED: "true"
     ports:
       - "8042:8042"   # HTTPS / DICOMweb
-      - "4242:4242"   # DICOM C-STORE
+      - "4242:4242"   # DICOM (TLS, mutual)
     volumes:
       - orthancdata:/var/lib/orthanc/db
       - ./infra/tls/certs:/certs:ro
@@ -73,6 +79,21 @@ services:
       - "8443:8443"   # https only
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
+      - ./infra/tls/certs:/certs:ro
+
+  # Production-style frontend (nginx). Off by default; dev uses `npm run dev`.
+  #   docker compose --profile web up -d --build web   ->  https://localhost:5443
+  web:
+    profiles: ["web"]
+    build:
+      context: ./frontend
+      args:
+        VITE_KEYCLOAK_URL: https://localhost:8443
+    environment:
+      AEGLE_API_UPSTREAM: ${AEGLE_API_UPSTREAM:-https://host.docker.internal:8090}
+    ports:
+      - "5443:8443"
+    volumes:
       - ./infra/tls/certs:/certs:ro
 
 # Named volumes (not bind mounts): avoids host file-ownership problems with Postgres.

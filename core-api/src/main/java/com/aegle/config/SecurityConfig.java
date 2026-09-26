@@ -1,6 +1,7 @@
 package com.aegle.config;
 
 import com.aegle.security.RateLimitFilter;
+import com.aegle.security.RateLimiter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, AegleProperties props) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, AegleProperties props, RateLimiter limiter)
+            throws Exception {
         http
                 // Stateless bearer-token API: no cookies, so no CSRF surface.
                 .csrf(AbstractHttpConfigurer::disable)
@@ -45,7 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter())))
-                .addFilterAfter(new RateLimitFilter(props.rateLimit()), BearerTokenAuthenticationFilter.class);
+                .addFilterAfter(new RateLimitFilter(limiter, props.rateLimit()), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
