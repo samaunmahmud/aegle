@@ -158,6 +158,16 @@ export interface AuditEntry {
   details: unknown;
 }
 
+export interface SpecialtySummary {
+  specialty: Specialty;
+  open: number;
+  inReview: number;
+  critical: number;
+  urgent: number;
+  slaBreached: number;
+  oldestWaitingSince: string | null;
+}
+
 export interface ModelEntry {
   id: string;
   name: string;

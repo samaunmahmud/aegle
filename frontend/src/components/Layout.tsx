@@ -50,6 +50,9 @@ export function Layout() {
         {clinician && (
           <nav className="nav-section" aria-label="Clinical">
             <div className="nav-heading">Clinical</div>
+            <NavLink to="/overview" className={navClass}>
+              <Icon.Overview /> Overview
+            </NavLink>
             <NavLink to="/worklist" end className={navClass}>
               <Icon.Worklist /> All worklists
             </NavLink>

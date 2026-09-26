@@ -6,6 +6,7 @@ import type {
   DicomSource,
   Me,
   ModelEntry,
+  SpecialtySummary,
   StudyDetail,
   UploadRequest,
   UploadResult,
@@ -62,6 +63,8 @@ export const api = {
     ),
 
   models: () => request<ModelEntry[]>("/api/models"),
+
+  worklistSummary: () => request<SpecialtySummary[]>("/api/worklist/summary"),
 
   setModelEnabled: (modelId: string, enabled: boolean) =>
     request<{ modelId: string; enabled: boolean }>(`/api/models/${modelId}/enabled`, {

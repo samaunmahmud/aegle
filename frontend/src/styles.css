@@ -1039,6 +1039,40 @@ textarea {
   border-bottom: 0;
 }
 
+/* ---------------------------------------------------------------- overview */
+.specialty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.specialty-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.specialty-tile:hover {
+  text-decoration: none;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(10, 95, 180, 0.12);
+}
+
+.specialty-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.specialty-tile-count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
 /* ------------------------------------------------------------ trend chart */
 .trend-header {
   display: flex;

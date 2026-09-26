@@ -30,6 +30,14 @@ export const Icon = {
       <path d="M14 6v16M6 14h16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   ),
+  Overview: () => (
+    <Svg>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </Svg>
+  ),
   Worklist: () => (
     <Svg>
       <path d="M9 6h11M9 12h11M9 18h11" />

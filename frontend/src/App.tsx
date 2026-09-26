@@ -7,6 +7,7 @@ import { StudyDetailPage } from "./pages/StudyDetailPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DicomSourcesPage } from "./pages/DicomSourcesPage";
 import { ModelsPage } from "./pages/ModelsPage";
+import { OverviewPage } from "./pages/OverviewPage";
 
 function AuditRoute() {
   const { roles } = useAuth();
@@ -28,7 +29,7 @@ function AdminRoute() {
 function Home() {
   const { roles } = useAuth();
   const clinician = roles.includes("RADIOLOGIST") || roles.includes("PHYSICIAN");
-  return <Navigate to={clinician ? "/worklist" : "/models"} replace />;
+  return <Navigate to={clinician ? "/overview" : "/models"} replace />;
 }
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
+        <Route path="overview" element={<OverviewPage />} />
         <Route path="worklist" element={<WorklistPage />} />
         <Route path="worklist/:specialty" element={<WorklistPage />} />
         <Route path="models" element={<ModelsPage />} />

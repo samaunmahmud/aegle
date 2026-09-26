@@ -43,6 +43,10 @@ public class WorklistController {
 
     public record Page(List<Item> items, long total) {}
 
+    /** Open work per specialty, for the department overview. */
+    public record SpecialtySummary(String specialty, long open, long inReview, long critical, long urgent,
+                                   long slaBreached, OffsetDateTime oldestWaitingSince) {}
+
     private static final List<String> STATES = List.of("OPEN", "IN_REVIEW", "DONE");
 
     private final JdbcClient jdbc;
@@ -100,6 +104,29 @@ public class WorklistController {
             audit.record(actor.orgId(), actor.userId(), "WORKLIST_VIEWED", "worklist", "*",
                     Map.of("count", items.size()));
             return new Page(items, total);
+        });
+    }
+
+    @GetMapping("/summary")
+    public List<SpecialtySummary> summary() {
+        Actor actor = users.require();
+        return tenantTx.executeAs(actor.orgId(), () -> {
+            List<SpecialtySummary> rows = jdbc.sql("""
+                    SELECT aegle_specialty(s.modality, s.body_part) AS specialty,
+                           count(*) FILTER (WHERE w.state = 'OPEN') AS open,
+                           count(*) FILTER (WHERE w.state = 'IN_REVIEW') AS in_review,
+                           count(*) FILTER (WHERE w.priority_reason->>'urgencyClass' = 'CRITICAL') AS critical,
+                           count(*) FILTER (WHERE w.priority_reason->>'urgencyClass' = 'URGENT') AS urgent,
+                           count(*) FILTER (WHERE w.sla_due_at < now()) AS breached,
+                           min(s.created_at) AS oldest
+                    FROM worklist_items w JOIN studies s ON s.id = w.study_id
+                    WHERE w.state IN ('OPEN', 'IN_REVIEW')
+                    GROUP BY 1""")
+                    .query((rs, i) -> new SpecialtySummary(rs.getString("specialty"), rs.getLong("open"),
+                            rs.getLong("in_review"), rs.getLong("critical"), rs.getLong("urgent"),
+                            rs.getLong("breached"), rs.getObject("oldest", OffsetDateTime.class))).list();
+            audit.record(actor.orgId(), actor.userId(), "WORKLIST_SUMMARY_VIEWED", "worklist", "*", Map.of());
+            return rows;
         });
     }
 

@@ -104,6 +104,20 @@ class SpecialtyAndModelSettingsTest extends IntegrationTestBase {
     }
 
     @Test
+    void theOverviewCountsOpenWorkPerSpecialty() throws Exception {
+        uploadAs("OV-1", "XR", "CHEST");
+        uploadAs("OV-2", "XR", "CHEST");
+        uploadAs("OV-3", "MR", "BRAIN");           // no model: never reaches the worklist
+        worker.runOnce(org);
+        JsonNode rows = body(mvc.perform(get("/api/worklist/summary").with(radiologist())).andReturn());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("specialty").asText()).isEqualTo("RADIOLOGY");
+        assertThat(rows.get(0).get("open").asLong()).isEqualTo(2);
+        assertThat(rows.get(0).get("urgent").asLong()).isEqualTo(2);     // image(60): pneumonia, URGENT
+        mvc.perform(get("/api/worklist/summary").with(as("aud-" + org, org, "AUDITOR"))).andExpect(status().isForbidden());
+    }
+
+    @Test
     void meIncludesTheOrganisationName() throws Exception {
         mvc.perform(get("/api/me").with(radiologist()))
                 .andExpect(jsonPath("$.organisationName").value("Test org " + org));
