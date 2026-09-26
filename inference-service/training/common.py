@@ -12,8 +12,12 @@ Each model has a prepare script that writes <data>/index.csv with columns:
 
 and a train script that describes the Task and calls run(). Every model is reported
 the same way on its held-out test set: accuracy, balanced accuracy, macro AUC,
-per-class sensitivity and precision, confusion matrix, calibration error, and (with
-masks) how much of the Grad-CAM heatmap lands on the lesion.
+per-class sensitivity and precision, confusion matrix, calibration error, (with masks)
+how much of the Grad-CAM heatmap lands on the lesion, and a shortcut baseline: a trivial
+model on image size, colour statistics and file size. If that baseline scores close to
+the real model, the classes probably differ in how images were acquired and the real
+score is not evidence the model sees disease. Colour can be genuine signal (stained
+parasites, for example), so read the baseline per dataset.
 """
 from __future__ import annotations
 
@@ -176,6 +180,35 @@ def metrics(p: np.ndarray, y: np.ndarray, labels: list[str]) -> dict:
     }
 
 
+def image_stats(path: Path) -> list[float]:
+    """Features that say nothing about disease: size, colour mean/spread, file size."""
+    im = Image.open(path)
+    a = np.asarray(im.convert("RGB").resize((64, 64)), dtype=np.float32)
+    return [im.size[0], im.size[1], *a.mean((0, 1)), *a.std((0, 1)), path.stat().st_size / 1e3]
+
+
+def shortcut_baseline(task: Task, train_rows, test_rows) -> dict:
+    """How well a trivial model on non-disease image statistics does on the same test set.
+
+    If it comes close to the real model, the classes differ in how images were acquired
+    (camera, crop, compression), and the real model's score is not evidence it sees disease.
+    """
+    from sklearn.linear_model import LogisticRegression
+
+    def xy(rows):
+        return (np.array([image_stats(task.data_dir / r["file"]) for r in rows]),
+                np.array([r["y"] for r in rows]))
+
+    x_tr, y_tr = xy(train_rows)
+    x_te, y_te = xy(test_rows)
+    mu, sd = x_tr.mean(0), x_tr.std(0) + 1e-9
+    clf = LogisticRegression(max_iter=5000).fit((x_tr - mu) / sd, y_tr)
+    p = np.zeros((len(y_te), len(task.labels)))
+    p[:, clf.classes_] = clf.predict_proba((x_te - mu) / sd)
+    m = metrics(p, y_te, task.labels)
+    return {k: m[k] for k in ("accuracy", "balanced_accuracy", "auc", "macro_auc_ovr") if k in m}
+
+
 def attention_on_lesion(model, task: Task, rows, tf_eval, device) -> dict:
     """Share of Grad-CAM mass on the expert lesion mask (vs. the mask's share of the image),
     and how often the heatmap's peak lies within 15 px of the lesion."""
@@ -273,6 +306,7 @@ def run(task: Task, argv=None) -> dict:
     test = metrics(*predict_all(model, test_dl, device), task.labels)
     if test_rows and test_rows[0].get("mask"):
         test["attention_on_lesion"] = attention_on_lesion(model, task, test_rows, tf_eval, device)
+    test["shortcut_baseline"] = shortcut_baseline(task, train_rows, test_rows)
     print("TEST (best-val checkpoint):", json.dumps(test, indent=2), flush=True)
     external = None
     if external_rows:

@@ -42,7 +42,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "cardiology",
     name: "Cardiology",
     summary: "ECG rhythm analysis and echocardiography",
-    planned: ["ECG arrhythmia detection (PTB-XL): needs waveform ingestion", "Echocardiogram ejection fraction (EchoNet-Dynamic): needs a data use agreement"],
+    planned: ["Echocardiogram ejection fraction (EchoNet-Dynamic): needs a signed data use agreement, and video support"],
     presets: [
       { label: "12-lead ECG", modality: "ECG", bodyPart: "HEART" },
       { label: "Echocardiogram", modality: "US", bodyPart: "HEART", supported: false },
@@ -53,7 +53,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "dermatology",
     name: "Dermatology",
     summary: "Skin lesion classification and wound tracking",
-    planned: ["Skin lesion classification (HAM10000; non-commercial licence)", "Chronic wound measurement over time"],
+    planned: [],
     presets: [
       { label: "Skin lesion (dermoscopy)", modality: "XC", bodyPart: "SKIN" },
       { label: "Chronic wound photo", modality: "XC", bodyPart: "WOUND" },
@@ -64,7 +64,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "ophthalmology",
     name: "Ophthalmology",
     summary: "Retinal photography: diabetic retinopathy, glaucoma",
-    planned: ["Diabetic retinopathy grading", "Glaucoma screening"],
+    planned: ["Glaucoma screening: first model withdrawn (its dataset let a trivial image-statistics model reach AUC 0.99); needs a cleaner dataset such as REFUGE"],
     presets: [{ label: "Retinal fundus photo", modality: "OP", bodyPart: "EYE" }],
   },
   {
@@ -72,7 +72,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "pathology",
     name: "Pathology",
     summary: "Blood smears and tissue biopsies",
-    planned: ["Malaria parasites on blood smears (NIH)", "Leukaemia (ALL) on blood smears", "Colorectal tissue classification (NCT-CRC-HE)"],
+    planned: ["Leukaemia (ALL) on blood smears: C-NMC 2019 (CC BY 3.0) only downloads through IBM Aspera", "Tumour grading on biopsies: needs a graded dataset (e.g. prostate Gleason)"],
     presets: [
       { label: "Blood smear (cell)", modality: "SM", bodyPart: "BLOOD" },
       { label: "Tissue biopsy (H&E tile)", modality: "SM", bodyPart: "TISSUE" },
@@ -83,7 +83,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "gastroenterology",
     name: "Gastroenterology",
     summary: "Endoscopy: polyps and inflammatory bowel disease",
-    planned: ["Polyps and ulcerative colitis on endoscopy (HyperKvasir)"],
+    planned: [],
     presets: [{ label: "Colonoscopy frame", modality: "ES", bodyPart: "COLON" }],
   },
   {
@@ -91,7 +91,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "neurology",
     name: "Neurology",
     summary: "Brain CT and MRI, EEG",
-    planned: ["Acute stroke and haemorrhage on head CT: needs data access", "Seizure detection on EEG (CHB-MIT): needs waveform ingestion"],
+    planned: ["Acute stroke and haemorrhage on head CT: needs access to a labelled dataset (RSNA ICH or ISLES registration)"],
     presets: [
       { label: "Brain MRI (T1 contrast)", modality: "MR", bodyPart: "BRAIN" },
       { label: "Head CT", modality: "CT", bodyPart: "BRAIN" },

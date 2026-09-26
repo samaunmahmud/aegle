@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .base import ModelAdapter, ModelUnavailable
 from .models import (blood_smear_malaria, brain_mri_tumor, chest_xray_pneumonia, colonoscopy,
-                     colorectal_tissue, ecg_rhythm, eeg_seizure, fundus_glaucoma, fundus_retinopathy,
+                     colorectal_tissue, ecg_rhythm, eeg_seizure, fundus_retinopathy,
                      skin_lesion, wound)
 
 log = logging.getLogger("aegle.registry")
@@ -18,7 +18,10 @@ ADAPTERS: dict[str, type[ModelAdapter]] = {
     brain_mri_tumor.MODEL_ID: brain_mri_tumor.BrainMriTumorType,
     blood_smear_malaria.MODEL_ID: blood_smear_malaria.BloodSmearMalaria,
     fundus_retinopathy.MODEL_ID: fundus_retinopathy.FundusRetinopathy,
-    fundus_glaucoma.MODEL_ID: fundus_glaucoma.FundusGlaucoma,
+    # fundus-glaucoma is withdrawn: on ACRIMA a trivial model using only image size and
+    # colour statistics reaches AUC 0.99, so its perfect test score reflects how the two
+    # classes were photographed, not glaucoma. Re-enable only after training on data
+    # without that confound (see training/train_glaucoma.py).
     ecg_rhythm.MODEL_ID: ecg_rhythm.EcgRhythm,
     skin_lesion.MODEL_ID: skin_lesion.SkinLesion,
     colonoscopy.MODEL_ID: colonoscopy.Colonoscopy,

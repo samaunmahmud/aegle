@@ -35,6 +35,9 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
   const test = testMetrics(model.metrics);
   const shown = KEY_METRICS.filter((k) => typeof test?.[k.key] === "number").slice(0, 4);
   const dataset = model.metrics?.["dataset"];
+  const baseline = test?.["shortcut_baseline"] as Metrics | undefined;
+  const baselineAuc = (baseline?.["auc"] ?? baseline?.["macro_auc_ovr"]) as number | undefined;
+  const modelAuc = (test?.["auc"] ?? test?.["macro_auc_ovr"]) as number | undefined;
   const caveat = model.metrics?.["caveat"];
 
   return (
@@ -75,6 +78,13 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
                 );
               })}
             </div>
+          </div>
+        )}
+        {baselineAuc != null && modelAuc != null && (
+          <div className="small" title="A trivial model using only image size, colour statistics and file size. If it scores close to the real model, the result may reflect how images were acquired rather than disease.">
+            <strong>Shortcut check:</strong> a trivial model on image size and colour alone reaches AUC{" "}
+            {baselineAuc.toFixed(2)} (this model {modelAuc.toFixed(2)})
+            {modelAuc - baselineAuc < 0.05 ? " — too close: treat the result as unproven." : "."}
           </div>
         )}
         <div className="callout">
