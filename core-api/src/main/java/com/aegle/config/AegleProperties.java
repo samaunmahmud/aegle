@@ -20,6 +20,7 @@ public record AegleProperties(
         @Valid @NotNull Phi phi,
         @Valid @NotNull Worker worker,
         @Valid @NotNull Models models,
+        @Valid @NotNull Dicom dicom,
         @Valid @NotNull RateLimit rateLimit,
         @Valid @NotNull Triage triage) {
 
@@ -39,6 +40,10 @@ public record AegleProperties(
                          @NotNull Duration retryBackoff, @NotNull Duration staleAfter) {}
 
     public record Models(boolean autoActivate, long syncIntervalMs, long syncInitialDelayMs) {}
+
+    /** Pulling studies from Orthanc. Credentials are Orthanc's REST login. */
+    public record Dicom(boolean enabled, @NotBlank String orthancUrl, String username, String password,
+                        @Positive long pollIntervalMs) {}
 
     public record RateLimit(@Positive int requestsPerMinute, @Positive int uploadsPerMinute) {}
 

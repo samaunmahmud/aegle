@@ -5,6 +5,7 @@ import { WorklistPage } from "./pages/WorklistPage";
 import { UploadPage } from "./pages/UploadPage";
 import { StudyDetailPage } from "./pages/StudyDetailPage";
 import { AuditPage } from "./pages/AuditPage";
+import { DicomSourcesPage } from "./pages/DicomSourcesPage";
 
 function AuditRoute() {
   const { roles } = useAuth();
@@ -12,6 +13,14 @@ function AuditRoute() {
     return <Navigate to="/worklist" replace />;
   }
   return <AuditPage />;
+}
+
+function AdminRoute() {
+  const { roles } = useAuth();
+  if (!roles.includes("ADMIN")) {
+    return <Navigate to="/worklist" replace />;
+  }
+  return <DicomSourcesPage />;
 }
 
 function Router() {
@@ -23,6 +32,7 @@ function Router() {
         <Route path="upload" element={<UploadPage />} />
         <Route path="studies/:id" element={<StudyDetailPage />} />
         <Route path="audit" element={<AuditRoute />} />
+        <Route path="admin/dicom" element={<AdminRoute />} />
         <Route path="*" element={<Navigate to="/worklist" replace />} />
       </Route>
     </Routes>

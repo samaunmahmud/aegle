@@ -151,6 +151,29 @@
       ]
     },
     {
+      "username": "ada.admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ada.admin@aegle.local",
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    },
+    {
       "username": "otto.other",
       "enabled": true,
       "emailVerified": true,

@@ -102,6 +102,36 @@ def test_service_refuses_to_start_without_a_strong_token(monkeypatch, token):
             pass
 
 
+def test_render_turns_dicom_into_a_png(client):
+    import pydicom
+    from pydicom.dataset import FileDataset, FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+
+    meta = FileMetaDataset()
+    meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.1"
+    meta.MediaStorageSOPInstanceUID = generate_uid()
+    ds = FileDataset(None, {}, file_meta=meta, preamble=b"\0" * 128)
+    ds.Rows, ds.Columns = 20, 30
+    ds.SamplesPerPixel, ds.BitsAllocated, ds.BitsStored, ds.HighBit = 1, 16, 12, 11
+    ds.PixelRepresentation = 0
+    ds.PhotometricInterpretation = "MONOCHROME2"
+    ds.PixelData = np.tile(np.arange(30, dtype=np.uint16) * 100, (20, 1)).tobytes()
+    buf = io.BytesIO()
+    pydicom.dcmwrite(buf, ds)
+
+    r = client.post("/v1/render", files={"file": ("x.dcm", buf.getvalue())})
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    png = Image.open(io.BytesIO(r.content))
+    assert png.size == (30, 20) and png.mode == "L"
+
+
+def test_render_rejects_non_images_and_needs_the_token(client):
+    assert client.post("/v1/render", files={"file": ("x.bin", b"nope")}).status_code == 422
+    r = client.post("/v1/render", headers={"Authorization": ""}, files={"file": ("x.png", png_bytes())})
+    assert r.status_code == 401
+
+
 def test_unknown_model_is_404(client):
     r = client.post("/v1/models/nope/predict", files={"file": ("x.png", png_bytes(), "image/png")})
     assert r.status_code == 404

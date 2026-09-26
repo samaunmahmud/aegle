@@ -10,4 +10,6 @@ public class TestStubs {
     @Bean @Primary StubInferenceClient stubInference() { return new StubInferenceClient(); }
 
     @Bean @Primary InMemoryObjectStore memoryStore() { return new InMemoryObjectStore(); }
+
+    @Bean @Primary StubOrthancClient stubOrthanc() { return new StubOrthancClient(); }
 }

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 export function Layout() {
   const { roles, name, logout } = useAuth();
   const canAudit = roles.includes("ADMIN") || roles.includes("AUDITOR");
+  const isAdmin = roles.includes("ADMIN");
 
   return (
     <div className="app-shell">
@@ -21,6 +22,11 @@ export function Layout() {
           {canAudit && (
             <NavLink to="/audit" className={({ isActive }) => (isActive ? "active" : "")}>
               Audit log
+            </NavLink>
+          )}
+          {isAdmin && (
+            <NavLink to="/admin/dicom" className={({ isActive }) => (isActive ? "active" : "")}>
+              DICOM senders
             </NavLink>
           )}
         </nav>

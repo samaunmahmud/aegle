@@ -22,6 +22,7 @@ Sign in with one of the demo users from `infra/keycloak/aegle-realm.json`
 | rita.radiologist   | RADIOLOGIST |
 | paul.physician     | PHYSICIAN   |
 | alex.auditor       | AUDITOR     |
+| ada.admin          | ADMIN (manages DICOM senders; sees no patient data) |
 | otto.other         | RADIOLOGIST (different org, for tenant-isolation checks) |
 
 The password (direct access) grant is disabled for `aegle-web`: sign-in only works

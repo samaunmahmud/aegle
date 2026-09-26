@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import base64
 import hmac
+import io
 import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Response, UploadFile
 
 from .base import ModelUnavailable
 from .imaging import MAX_UPLOAD_BYTES, UnsupportedImage, decode_image
@@ -95,3 +96,17 @@ async def predict(
             "image_base64": base64.b64encode(out.heatmap.png).decode("ascii"),
         },
     }
+
+
+@app.post("/v1/render", dependencies=[Depends(require_core_api)])
+async def render(file: UploadFile = File(...)):
+    """Decodes an image (DICOM included: windowing, MONOCHROME1 inversion) into a PNG
+    browsers can display. Grayscale, original size, no burned-in text added."""
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    try:
+        image = decode_image(data)
+    except UnsupportedImage as exc:
+        raise HTTPException(422, str(exc))
+    buf = io.BytesIO()
+    image.convert("L").save(buf, format="PNG", optimize=True)
+    return Response(buf.getvalue(), media_type="image/png")

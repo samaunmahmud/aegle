@@ -39,6 +39,7 @@ export interface WorklistPage {
 export interface StudySummary {
   id: string;
   status: StudyStatus;
+  source: "UPLOAD" | "DICOM" | "DICOMWEB";
   modality: string;
   bodyPart: string;
   accessionNo: string | null;
@@ -108,6 +109,12 @@ export interface UploadRequest {
   bodyPart: string;
   accessionNo?: string;
   studyDate?: string;
+}
+
+export interface DicomSource {
+  aeTitle: string;
+  description: string | null;
+  createdAt: string;
 }
 
 export interface AuditVerification {

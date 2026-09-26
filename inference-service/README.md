@@ -67,6 +67,7 @@ configured the service refuses to start. `/health` stays open for probes.
 |---|---|
 | `GET /health` | Loaded and unavailable models |
 | `GET /v1/models` | Model info: modality, intended use, version, weights hash, metrics |
+| `POST /v1/render` | Multipart `file` → PNG for display (DICOM windowing and MONOCHROME1 handled) |
 | `POST /v1/models/{id}/predict` | Multipart `file` (PNG, JPEG or DICOM). `?heatmap=false` skips Grad-CAM |
 
 Response fields map onto the database: `predictions[]` → `predictions`,

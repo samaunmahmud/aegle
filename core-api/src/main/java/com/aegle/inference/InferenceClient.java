@@ -11,6 +11,9 @@ public interface InferenceClient {
     /** @throws NonRetryableInferenceException when retrying the same input cannot succeed */
     Result predict(String modelId, byte[] image);
 
+    /** A PNG rendering of any supported image, DICOM included, for display in browsers. */
+    byte[] render(byte[] image);
+
     record ModelInfo(String id, String version, String modality, String bodyPart, String task,
                      String intendedUse, String weightsSha256, Map<String, Object> metrics) {}
 

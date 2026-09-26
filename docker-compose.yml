@@ -59,6 +59,8 @@ services:
       ORTHANC__DICOM_TLS_PRIVATE_KEY: /certs/server.key
       ORTHANC__DICOM_TLS_TRUSTED_CERTIFICATES: /certs/ca.crt
       ORTHANC__DICOM_TLS_REMOTE_CERTIFICATE_REQUIRED: "true"
+      # Seconds without a new instance before a study counts as complete and Aegle takes it.
+      ORTHANC__STABLE_AGE: "10"
     ports:
       - "8042:8042"   # HTTPS / DICOMweb
       - "4242:4242"   # DICOM (TLS, mutual)

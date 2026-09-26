@@ -47,13 +47,7 @@ public class HttpInferenceClient implements InferenceClient {
 
     @Override
     public Result predict(String modelId, byte[] image) {
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new ByteArrayResource(image) {
-            @Override
-            public String getFilename() {
-                return "upload";   // fixed name: never forward client-supplied filenames (may hold PHI)
-            }
-        });
+        MultiValueMap<String, Object> body = fileBody(image);
         JsonNode root;
         try {
             root = http.post().uri("/v1/models/{id}/predict", modelId)
@@ -77,6 +71,24 @@ public class HttpInferenceClient implements InferenceClient {
                     Base64.getDecoder().decode(h.path("image_base64").asText()));
         }
         return new Result(modelInfo(root.path("model")), labels, heatmap);
+    }
+
+    @Override
+    public byte[] render(byte[] image) {
+        return http.post().uri("/v1/render")
+                .contentType(MediaType.MULTIPART_FORM_DATA).body(fileBody(image))
+                .retrieve().body(byte[].class);
+    }
+
+    private static MultiValueMap<String, Object> fileBody(byte[] image) {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(image) {
+            @Override
+            public String getFilename() {
+                return "upload";   // fixed name: never forward client-supplied filenames (may hold PHI)
+            }
+        });
+        return body;
     }
 
     private ModelInfo modelInfo(JsonNode m) {

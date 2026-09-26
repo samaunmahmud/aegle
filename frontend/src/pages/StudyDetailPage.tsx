@@ -51,7 +51,10 @@ export function StudyDetailPage() {
         {detail.patient.name && <span>Name: {detail.patient.name}</span>}
         {detail.patient.dob && <span>DOB: {detail.patient.dob}</span>}
         {detail.study.accessionNo && <span>Accession: {detail.study.accessionNo}</span>}
-        <span>Received: {new Date(detail.study.createdAt).toLocaleString()}</span>
+        <span>
+          Received: {new Date(detail.study.createdAt).toLocaleString()}
+          {detail.study.source === "DICOM" ? " from a DICOM modality" : " by upload"}
+        </span>
       </div>
 
       <div className="study-layout">

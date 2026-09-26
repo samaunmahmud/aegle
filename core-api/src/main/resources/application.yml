@@ -77,6 +77,12 @@ aegle:
     auto-activate: false                 # a model version must be approved before it runs
     sync-interval-ms: 60000
     sync-initial-delay-ms: 2000
+  dicom:
+    enabled: true                         # follow Orthanc and ingest studies from registered senders
+    orthanc-url: ${AEGLE_ORTHANC_URL:https://localhost:8042}
+    username: ${ORTHANC_USER:}
+    password: ${ORTHANC_PASSWORD:}
+    poll-interval-ms: 5000
   rate-limit:
     requests-per-minute: 300   # per user, all /api calls
     uploads-per-minute: 30     # per user, additionally, for POST /api/studies

@@ -20,7 +20,7 @@ class PhiCipherTest {
 
     private static PhiCipher cipher(String enc, String hash) {
         return new PhiCipher(new AegleProperties(null, null, null, new AegleProperties.Phi(enc, hash),
-                null, null, null, null));
+                null, null, null, null, null));
     }
 
     @Test

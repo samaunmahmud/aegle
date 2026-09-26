@@ -2,6 +2,7 @@ import { freshToken } from "../auth/keycloak";
 import type {
   AuditEntry,
   AuditVerification,
+  DicomSource,
   StudyDetail,
   UploadRequest,
   UploadResult,
@@ -125,4 +126,16 @@ export const api = {
   },
 
   verifyAudit: () => request<AuditVerification>("/api/audit/verify"),
+
+  dicomSources: () => request<DicomSource[]>("/api/admin/dicom-sources"),
+
+  addDicomSource: (aeTitle: string, description: string) =>
+    request<DicomSource>("/api/admin/dicom-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aeTitle, description: description || null }),
+    }),
+
+  removeDicomSource: (aeTitle: string) =>
+    request<void>(`/api/admin/dicom-sources/${encodeURIComponent(aeTitle)}`, { method: "DELETE" }),
 };

@@ -84,6 +84,26 @@ security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db 
 Production uses real certificates from a secret store instead; the dev CA key sits on
 disk next to the certificates and must never be trusted outside development.
 
+### DICOM from modalities
+
+Modalities and PACS send to Orthanc (C-STORE, port 4242, mutual TLS). core-api follows
+Orthanc's change log and, once a study is complete (`StableStudy`, after Orthanc's
+`STABLE_AGE`, 10 s in dev), imports it into the organisation that registered the
+sender's calling AE title: patient identifiers are encrypted as for uploads, images go to
+object storage with a de-identified header subset, matching models are queued, and the
+study appears in the worklist. Admins register AE titles on the "DICOM senders" page
+(`/api/admin/dicom-sources`); the dev seed registers `AEGLE_DEV_CR` for the demo clinic.
+
+- Studies from unregistered AE titles, or without a PatientID, are left in Orthanc and
+  logged; registering the title later does not import them retroactively (re-send them).
+- Each Orthanc study is imported once. Instances that arrive after the import are not
+  added; configure modalities to send a study in one association.
+- An AE title is claimed by the sender itself. The TLS certificate proves the sender is
+  one of yours, not which AE title it may use, so issue certificates only to devices you
+  would trust with any of your organisation's titles.
+- Browsers cannot display DICOM: the image endpoint returns a PNG rendered by the
+  inference service on first view and kept in object storage next to the original.
+
 ### Production-style frontend
 
 ```bash

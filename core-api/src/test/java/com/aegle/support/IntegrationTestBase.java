@@ -63,6 +63,7 @@ public abstract class IntegrationTestBase {
         r.add("aegle.phi.enc-key", () -> key());
         r.add("aegle.phi.hash-key", () -> key());
         r.add("aegle.worker.enabled", () -> "false");          // tests drive the worker by hand
+        r.add("aegle.dicom.enabled", () -> "false");           // and DICOM ingestion
         r.add("aegle.worker.max-attempts", () -> "2");
         r.add("aegle.worker.retry-backoff", () -> "0s");
         r.add("aegle.models.auto-activate", () -> "true");
@@ -82,6 +83,7 @@ public abstract class IntegrationTestBase {
     @Autowired protected InMemoryObjectStore store;
     @Autowired protected InferenceWorker worker;
     @Autowired protected ModelRegistrySync registry;
+    @Autowired protected StubOrthancClient orthanc;
 
     /** Connects as the schema owner (a superuser here), so it sees every tenant: for assertions only. */
     protected final JdbcTemplate owner = new JdbcTemplate(
@@ -92,6 +94,7 @@ public abstract class IntegrationTestBase {
     @BeforeEach
     void freshTenant() {
         inference.reset();
+        orthanc.reset();
         registry.sync();
         org = newOrg();
     }
