@@ -93,6 +93,7 @@ async def predict(
         "model": asdict(adapter.info),
         "top_label": out.predictions[0].label,
         "predictions": [asdict(p) for p in out.predictions],
+        "measurements": [asdict(m) for m in out.measurements],
         "heatmap": None if out.heatmap is None else {
             "method": out.heatmap.method,
             "target_label": out.heatmap.target_label,

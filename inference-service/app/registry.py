@@ -8,7 +8,7 @@ from pathlib import Path
 from .base import ModelAdapter, ModelUnavailable
 from .models import (blood_smear_malaria, brain_mri_tumor, chest_xray_pneumonia, colonoscopy,
                      colorectal_tissue, ecg_rhythm, eeg_seizure, fundus_glaucoma, fundus_retinopathy,
-                     skin_lesion)
+                     skin_lesion, wound)
 
 log = logging.getLogger("aegle.registry")
 
@@ -24,6 +24,7 @@ ADAPTERS: dict[str, type[ModelAdapter]] = {
     colonoscopy.MODEL_ID: colonoscopy.Colonoscopy,
     colorectal_tissue.MODEL_ID: colorectal_tissue.ColorectalTissue,
     eeg_seizure.MODEL_ID: eeg_seizure.EegSeizure,
+    wound.MODEL_ID: wound.WoundSegmentation,
 }
 
 

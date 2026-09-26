@@ -89,6 +89,21 @@ export interface JobView {
   error: string | null;
 }
 
+export interface MeasurementView {
+  name: string;
+  value: number;
+  unit: string;
+}
+
+export interface MeasurementPoint {
+  studyId: string;
+  studyDate: string | null;
+  receivedAt: string;
+  name: string;
+  value: number;
+  unit: string;
+}
+
 export interface StudyDetail {
   study: StudySummary;
   patient: Patient;
@@ -97,6 +112,8 @@ export interface StudyDetail {
   reviews: ReviewView[];
   jobs: JobView[];
   priority: unknown;
+  measurements: MeasurementView[];
+  measurementHistory: MeasurementPoint[];
 }
 
 export interface UploadResult {

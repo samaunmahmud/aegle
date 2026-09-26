@@ -220,3 +220,24 @@ def test_render_keeps_colour(client):
     buf = io.BytesIO(); Image.fromarray(rgb).save(buf, format="PNG")
     r = client.post("/v1/render", files={"file": ("x.png", buf.getvalue())})
     assert Image.open(io.BytesIO(r.content)).mode == "RGB"
+
+
+def test_segmentation_models_return_measurements_and_an_outline(tmp_path, monkeypatch):
+    from app.models import wound
+    from app.models.unet import UNetResNet18
+    torch.manual_seed(0)
+    torch.save(UNetResNet18().state_dict(), tmp_path / wound.WEIGHTS_FILE)
+    (tmp_path / wound.META_FILE).write_text(json.dumps({"version": "test", "input_size": 64}))
+    monkeypatch.setenv("AEGLE_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("AEGLE_INFERENCE_TOKEN", TOKEN)
+    from app.main import app
+    rgb = (np.random.RandomState(3).rand(50, 70, 3) * 255).astype(np.uint8)
+    buf = io.BytesIO(); Image.fromarray(rgb).save(buf, format="PNG")
+    with TestClient(app, headers=AUTH) as c:
+        r = c.post("/v1/models/wound-segmentation/predict", files={"file": ("w.png", buf.getvalue())})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    names = {m["name"]: m for m in body["measurements"]}
+    assert names["wound_area"]["unit"] == "px" and 0 <= names["wound_area_fraction"]["value"] <= 100
+    assert body["model"]["task"] == "segmentation"
+    assert Image.open(io.BytesIO(base64.b64decode(body["heatmap"]["image_base64"]))).size == (70, 50)

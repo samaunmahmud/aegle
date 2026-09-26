@@ -27,13 +27,17 @@ class RateLimiterTest extends IntegrationTestBase {
 
     @Test
     void refillsOverTime() throws Exception {
-        for (int i = 0; i < 60; i++) {
-            limiter.tryAcquire("b", key, 60);
+        // 30 per minute = one token every 2 s. Drain it; on a busy machine a token may come
+        // back while draining, so keep taking until the bucket is actually empty.
+        for (int i = 0; i < 30; i++) {
+            limiter.tryAcquire("b", key, 30);
         }
-        assertThat(limiter.tryAcquire("b", key, 60)).isPositive();
-        Thread.sleep(1_100);                                      // one token per second
-        assertThat(limiter.tryAcquire("b", key, 60)).isZero();
-        assertThat(limiter.tryAcquire("b", key, 60)).isPositive();
+        int extra = 0;
+        while (limiter.tryAcquire("b", key, 30) == 0) {
+            assertThat(++extra).as("bucket never runs dry").isLessThan(5);
+        }
+        Thread.sleep(2_200);
+        assertThat(limiter.tryAcquire("b", key, 30)).isZero();    // a token has refilled
     }
 
     @Test

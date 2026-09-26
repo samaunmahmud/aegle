@@ -37,9 +37,17 @@ class Heatmap:
 
 
 @dataclass(frozen=True)
+class Measurement:
+    name: str                # e.g. "wound_area"
+    value: float
+    unit: str                # e.g. "px", "%", "mm2"
+
+
+@dataclass(frozen=True)
 class PredictionOutput:
     predictions: list[Prediction]   # sorted by probability, descending
     heatmap: Heatmap | None
+    measurements: list[Measurement] = field(default_factory=list)
 
 
 class ModelUnavailable(RuntimeError):

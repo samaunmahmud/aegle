@@ -21,8 +21,15 @@ public interface InferenceClient {
 
     record Heatmap(String method, String targetLabel, byte[] png) {}
 
+    /** A quantity the model measured, e.g. wound area. */
+    record Measurement(String name, double value, String unit) {}
+
     /** {@code predictions} is sorted by probability, highest first. */
-    record Result(ModelInfo model, List<Label> predictions, Heatmap heatmap) {}
+    record Result(ModelInfo model, List<Label> predictions, Heatmap heatmap, List<Measurement> measurements) {
+        public Result(ModelInfo model, List<Label> predictions, Heatmap heatmap) {
+            this(model, predictions, heatmap, List.of());
+        }
+    }
 
     class NonRetryableInferenceException extends RuntimeException {
         public NonRetryableInferenceException(String message) {

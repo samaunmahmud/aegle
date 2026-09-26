@@ -47,9 +47,16 @@ public class StudyService {
 
     public record JobView(UUID id, String status, int attempts, String error) {}
 
+    public record MeasurementView(String name, double value, String unit) {}
+
+    /** One visit's value of a measurement, for the same patient and study type. */
+    public record MeasurementPoint(UUID studyId, LocalDate studyDate, OffsetDateTime receivedAt, String name,
+                                   double value, String unit) {}
+
     public record StudyDetail(StudySummary study, Patient patient, List<PredictionView> predictions,
                               boolean hasHeatmap, List<ReviewView> reviews, List<JobView> jobs,
-                              JsonNode priority) {}
+                              JsonNode priority, List<MeasurementView> measurements,
+                              List<MeasurementPoint> measurementHistory) {}
 
     public record UploadResult(UUID studyId, String status, int jobsQueued) {}
 
@@ -234,8 +241,28 @@ public class StudyService {
             JsonNode priority = jdbc.sql("SELECT priority_reason FROM worklist_items WHERE study_id = :id")
                     .param("id", studyId).query(String.class).optional().map(this::parse).orElse(null);
 
+            List<MeasurementView> measurements = jdbc.sql("""
+                    SELECT name, value, unit FROM measurements WHERE study_id = :id ORDER BY created_at, name""")
+                    .param("id", studyId)
+                    .query((rs, i) -> new MeasurementView(rs.getString("name"), rs.getDouble("value"),
+                            rs.getString("unit"))).list();
+
+            // The same measurements from this patient's other studies of the same type: healing over visits.
+            List<MeasurementPoint> history = measurements.isEmpty() ? List.of() : jdbc.sql("""
+                    SELECT s.id, s.study_date, s.created_at, m.name, m.value, m.unit
+                    FROM measurements m JOIN studies s ON s.id = m.study_id
+                    JOIN studies me ON me.id = :id
+                    WHERE s.patient_id = me.patient_id AND s.modality = me.modality
+                      AND s.body_part IS NOT DISTINCT FROM me.body_part
+                    ORDER BY COALESCE(s.study_date, s.created_at::date), s.created_at""")
+                    .param("id", studyId)
+                    .query((rs, i) -> new MeasurementPoint(rs.getObject("id", UUID.class),
+                            rs.getObject("study_date", LocalDate.class), rs.getObject("created_at", OffsetDateTime.class),
+                            rs.getString("name"), rs.getDouble("value"), rs.getString("unit"))).list();
+
             audit.record(actor.orgId(), actor.userId(), "STUDY_VIEWED", "study", studyId.toString(), Map.of());
-            return new StudyDetail(row.getKey(), row.getValue(), predictions, hasHeatmap, reviews, jobs, priority);
+            return new StudyDetail(row.getKey(), row.getValue(), predictions, hasHeatmap, reviews, jobs, priority,
+                    measurements, history);
         });
     }
 

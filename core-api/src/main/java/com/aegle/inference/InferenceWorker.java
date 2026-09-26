@@ -181,6 +181,13 @@ public class InferenceWorker {
                         sla_due_at = LEAST(worklist_items.sla_due_at, EXCLUDED.sla_due_at)""")
                     .param("org", orgId).param("study", job.studyId()).param("score", score.priority())
                     .param("reason", toJson(score.reason())).param("sla", (double) score.sla().toSeconds()).update();
+            for (InferenceClient.Measurement m : result.measurements()) {
+                jdbc.sql("""
+                        INSERT INTO measurements (org_id, study_id, job_id, name, value, unit)
+                        VALUES (:org, :study, :job, :name, :value, :unit)""")
+                        .param("org", orgId).param("study", job.studyId()).param("job", job.id())
+                        .param("name", m.name()).param("value", m.value()).param("unit", m.unit()).update();
+            }
             jdbc.sql("UPDATE inference_jobs SET status = 'SUCCEEDED', error = NULL, finished_at = now() WHERE id = :id")
                     .param("id", job.id()).update();
             refreshStudyStatus(job.studyId());

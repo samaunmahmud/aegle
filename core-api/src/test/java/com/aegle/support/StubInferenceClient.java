@@ -13,6 +13,8 @@ public class StubInferenceClient implements InferenceClient {
 
     public volatile String weightsSha = "sha-test-1";
     public volatile RuntimeException failure;
+    /** Measurements returned with every prediction; the 10th image byte, if set, is the area. */
+    public volatile boolean measure;
     public final AtomicInteger calls = new AtomicInteger();
     public final AtomicInteger renders = new AtomicInteger();
 
@@ -24,6 +26,7 @@ public class StubInferenceClient implements InferenceClient {
         failure = null;
         calls.set(0);
         renders.set(0);
+        measure = false;
     }
 
     public ModelInfo info() {
@@ -46,7 +49,11 @@ public class StubInferenceClient implements InferenceClient {
         List<Label> labels = pneumonia >= 0.5
                 ? List.of(new Label("PNEUMONIA", pneumonia), new Label("NORMAL", 1 - pneumonia))
                 : List.of(new Label("NORMAL", 1 - pneumonia), new Label("PNEUMONIA", pneumonia));
-        return new Result(info(), labels, new Heatmap("grad-cam", labels.get(0).label(), new byte[]{1, 2, 3}));
+        List<Measurement> measurements = measure
+                ? List.of(new Measurement("wound_area", (image[9] & 0xFF) * 100.0, "px"))
+                : List.of();
+        return new Result(info(), labels, new Heatmap("grad-cam", labels.get(0).label(), new byte[]{1, 2, 3}),
+                measurements);
     }
 
     @Override

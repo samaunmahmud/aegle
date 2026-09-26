@@ -70,7 +70,11 @@ public class HttpInferenceClient implements InferenceClient {
             heatmap = new Heatmap(h.path("method").asText(), h.path("target_label").asText(),
                     Base64.getDecoder().decode(h.path("image_base64").asText()));
         }
-        return new Result(modelInfo(root.path("model")), labels, heatmap);
+        List<Measurement> measurements = new ArrayList<>();
+        for (JsonNode m : root.path("measurements")) {
+            measurements.add(new Measurement(m.path("name").asText(), m.path("value").asDouble(), m.path("unit").asText()));
+        }
+        return new Result(modelInfo(root.path("model")), labels, heatmap, measurements);
     }
 
     @Override

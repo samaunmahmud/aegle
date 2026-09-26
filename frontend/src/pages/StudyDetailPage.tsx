@@ -4,6 +4,7 @@ import { api, ApiError } from "../api/client";
 import type { PredictionView, ReviewDecision, StudyDetail } from "../api/types";
 import { StatusBadge, UrgencyBadge } from "../components/Badges";
 import { SpecialtyIcon } from "../components/Icons";
+import { MeasurementTrend } from "../components/MeasurementTrend";
 import { age, dateTime, probability, titleCase } from "../format";
 import { specialtyById } from "../specialties";
 
@@ -215,6 +216,22 @@ export function StudyDetailPage() {
               })
             )}
           </section>
+
+          {detail.measurements.length > 0 && (
+            <section className="panel" aria-label="Measurements">
+              <div className="panel-header">
+                <h2>Measurements</h2>
+                <span className="cell-secondary">AI-derived · verify clinically</span>
+              </div>
+              <div className="panel-body">
+                <MeasurementTrend
+                  title="Wound area"
+                  points={detail.measurementHistory.filter((m) => m.name === detail.measurements[0].name)}
+                  currentStudyId={study.id}
+                />
+              </div>
+            </section>
+          )}
 
           {failed.length > 0 && (
             <section className="panel">

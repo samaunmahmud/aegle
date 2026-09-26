@@ -138,5 +138,7 @@ aegle:
       BACKGROUND: ROUTINE
       SEIZURE_ACTIVITY: URGENT
       NO_SEIZURE_ACTIVITY: ROUTINE
+      WOUND_DETECTED: ROUTINE            # tracking, not triage: area trend is shown on the study
+      NO_WOUND_DETECTED: ROUTINE
     wait-bonus-per-hour: 0.5
     wait-bonus-cap: 20
