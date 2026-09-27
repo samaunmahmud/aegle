@@ -34,7 +34,7 @@ server {
         proxy_set_header Host              $host;
         proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
-        client_max_body_size 52m;
+        client_max_body_size 102m;
         proxy_read_timeout   130s;
     }
 }

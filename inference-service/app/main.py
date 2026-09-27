@@ -19,11 +19,15 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Respon
 
 from .base import ModelUnavailable
 from .imaging import MAX_UPLOAD_BYTES, UnsupportedImage, decode_image, is_grayscale
+from .eeg import MAX_BYTES as EEG_MAX_BYTES
 from .eeg import UnsupportedEeg, is_edf, read_edf
 from .eeg import render as render_eeg
 from .registry import Registry
 from .waveform import UnsupportedWaveform, decode_waveform, is_waveform
 from .waveform import render as render_waveform
+
+# Read enough for the largest input kind; each decoder enforces its own limit (images 50 MB).
+READ_LIMIT = max(MAX_UPLOAD_BYTES, EEG_MAX_BYTES)
 
 MIN_TOKEN_LENGTH = 32
 
@@ -82,7 +86,7 @@ async def predict(
     except ModelUnavailable as exc:
         raise HTTPException(503, str(exc))
 
-    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    data = await file.read(READ_LIMIT + 1)
     try:
         subject = {"waveform": decode_waveform, "eeg": read_edf}.get(adapter.INPUT_KIND, decode_image)(data)
     except (UnsupportedImage, UnsupportedWaveform, UnsupportedEeg) as exc:
@@ -108,7 +112,7 @@ async def render(file: UploadFile = File(...)):
     """Decodes an image (DICOM included: windowing, MONOCHROME1 inversion) into a PNG
     browsers can display: grayscale stays grayscale, colour stays colour, original size,
     no burned-in text added. ECGs (DICOM waveform or CSV) are drawn on standard paper."""
-    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    data = await file.read(READ_LIMIT + 1)
     if is_edf(data):
         try:
             return Response(render_eeg(read_edf(data)), media_type="image/png")

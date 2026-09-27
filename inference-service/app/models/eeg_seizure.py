@@ -89,9 +89,11 @@ class EegSeizure(ModelAdapter):
         """Per-window seizure probability, smoothed over neighbouring windows, and window starts."""
         x, starts = windows(eeg, self._window, self._stride)
         probs = []
-        with torch.no_grad():
-            for i in range(0, len(x), 256):
-                probs.append(torch.sigmoid(self._net(torch.from_numpy(x[i:i + 256])))[:, 0].numpy())
+        with torch.inference_mode():
+            # Small batches: on CPU, 16+ windows per batch run ~15x slower per window (measured on
+            # Apple silicon), which pushed a one-hour recording past core-api's 120 s timeout.
+            for i in range(0, len(x), 8):
+                probs.append(torch.sigmoid(self._net(torch.from_numpy(x[i:i + 8])))[:, 0].numpy())
         p = np.concatenate(probs)
         return np.convolve(np.pad(p, 1, mode="edge"), np.ones(3) / 3, mode="valid"), starts
 

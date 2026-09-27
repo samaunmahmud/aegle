@@ -94,3 +94,9 @@ def test_alarm_needs_a_sustained_run():
     assert (score[3:6] >= 0.5).all() and score[6] < 0.5
     assert eeg_seizure.alarm_events(score, np.arange(7) * 4.0, 8.0) == [(12.0, 28.0)]
     assert np.array_equal(eeg_seizure.alarm_score(p, 0.5, 1) >= 0.5, p >= 0.5)
+
+
+def test_a_one_hour_eeg_is_not_cut_off_by_the_upload_limit():
+    from app import main
+    one_hour = 256 + 24 * 256 + 3600 * 23 * 256 * 2          # CHB-MIT: 23 channels, 256 Hz
+    assert main.READ_LIMIT >= eeg.MAX_BYTES > one_hour

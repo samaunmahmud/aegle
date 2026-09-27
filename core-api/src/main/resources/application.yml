@@ -32,8 +32,8 @@ spring:
     password: ${POSTGRES_PASSWORD}
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 52MB
+      max-file-size: 100MB   # a one-hour EEG (EDF) is ~52 MB; images are capped at 50 MB by inference
+      max-request-size: 102MB
   security:
     oauth2:
       resourceserver:

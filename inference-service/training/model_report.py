@@ -17,10 +17,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SPECIALTY = {"XR": "Radiology", "ECG": "Cardiology", "XC": "Dermatology", "OP": "Ophthalmology",
              "SM": "Pathology", "ES": "Gastroenterology", "EEG": "Neurology"}
-WITHDRAWN = {
-    "fundus-glaucoma": ("glaucoma-resnet18.json",
+WITHDRAWN = {  # model id -> (metadata file, specialty, why, short reason, data)
+    "fundus-glaucoma": ("glaucoma-resnet18.json", "Ophthalmology",
                         "Withdrawn. On ACRIMA a logistic regression on image size and colour statistics reaches "
-                        "AUC 0.99, so the model's perfect test score reflects how the classes were photographed."),
+                        "AUC 0.99, so the model's perfect test score reflects how the classes were photographed.",
+                        "shortcut", "ACRIMA"),
+    "head-ct-stroke": ("head-ct-stroke-resnet18.json", "Neurology",
+                       "Withdrawn. With 99 patients it overfits after two epochs and finds 15% of ischaemic-stroke "
+                       "slices; haemorrhage triage needs a far larger dataset (e.g. RSNA Intracranial Haemorrhage).",
+                       "too little data", "León NCCT"),
 }
 
 
@@ -67,6 +72,14 @@ def section(model_id: str, meta: dict) -> list[str]:
         lines.append(f"**Shortcut check:** image size/colour alone reaches balanced accuracy "
                      f"{pct(base['balanced_accuracy'])}, AUC {num(base.get('auc', base.get('macro_auc_ovr')))} "
                      f"(model: {pct(bal)}, {num(test.get('auc', test.get('macro_auc_ovr')))}).")
+    setups = test.get("by_capture_setup")
+    if setups:
+        lines.append("**Within one capture setup:** " + "; ".join(
+            f"{name.replace('_', ' ')} ({s['n']} frames) balanced accuracy {pct(s['balanced_accuracy'])}"
+            for name, s in setups.items()) + ".")
+    if meta.get("mask_regions"):
+        lines.append(f"**Blacked out before the model sees the image:** {len(meta['mask_regions'])} burnt-in "
+                     f"overlay region(s) that differed by class.")
     att = test.get("attention_on_lesion") or test.get("attention_on_tumour")
     if att:
         a = att["all"]
@@ -81,6 +94,12 @@ def section(model_id: str, meta: dict) -> list[str]:
         cleared = sum(c[i][j] for i in range(2) for j in range(2))
         lines.append(f"**Referable DR (moderate or worse):** sensitivity {pct(found / sum(map(sum, c[2:])))}, "
                      f"specificity {pct(cleared / sum(map(sum, c[:2])))}.")
+    if cm.get("labels", [None])[-1] == "BENIGN_PROSTATE":
+        # The first question for a biopsy patch: any cancer (pattern 3, 4 or 5) vs benign.
+        c = cm["rows_true_cols_predicted"]
+        found = sum(c[i][j] for i in range(3) for j in range(3))
+        lines.append(f"**Cancer (any pattern) vs benign:** sensitivity {pct(found / sum(map(sum, c[:3])))}, "
+                     f"specificity {pct(c[3][3] / sum(c[3]))}.")
     if "per_class" in test:
         lines += ["", "| Class | n | Sensitivity | Precision |", "|---|---|---|---|"]
         lines += [f"| {k} | {v['n']} | {pct(v['sensitivity'])} | {pct(v['precision'])} |"
@@ -113,10 +132,10 @@ def main():
         rows.append(f"| {specialty(modality, getattr(cls, 'BODY_PART', None))} | `{model_id}` | {headline(test)} | "
                     f"{m.get('dataset', '–').split(':')[0]} |")
         sections += section(model_id, meta)
-    for model_id, (meta_file, reason) in WITHDRAWN.items():
+    for model_id, (meta_file, spec, reason, short, data) in WITHDRAWN.items():
         p = default_model_dir() / meta_file
         if p.exists():
-            rows.append(f"| Ophthalmology | ~~`{model_id}`~~ | **withdrawn**: shortcut | ACRIMA |")
+            rows.append(f"| {spec} | ~~`{model_id}`~~ | **withdrawn**: {short} | {data} |")
             sections += section(model_id, json.loads(p.read_text())) + [f"**{reason}**", ""]
     out += ["| Specialty | Model | Held-out result | Data |", "|---|---|---|---|", *rows, "", *sections]
     target = REPO_ROOT / "docs" / "models.md"

@@ -57,7 +57,7 @@ def image_cases(model_id: str) -> list[tuple[Path, str]]:
     from .common import load_index, split
     trainers = {"blood-smear-malaria": "train_malaria", "fundus-diabetic-retinopathy": "train_retinopathy",
                 "skin-lesion-dermoscopy": "train_dermatology", "colonoscopy-findings": "train_gastro",
-                "colorectal-tissue-he": "train_tissue", "head-ct-stroke": "train_stroke",
+                "colorectal-tissue-he": "train_tissue",
                 "prostate-gleason-pattern": "train_gleason"}
     task = __import__(f"training.{trainers[model_id]}", fromlist=["TASK"]).TASK
     _, _, test, _ = split(load_index(task), task.labels, 0.15, 0.15, 42)
@@ -106,20 +106,65 @@ def check_ecg(n: int, token: str) -> dict:
             "note": "sample macro AUC over labels present in the sample"}
 
 
+def check_wound(n: int, token: str) -> dict:
+    """Served wound area vs the expert mask, as recorded at training time."""
+    from PIL import Image
+    from .train_wound import pairs
+    cases = [(i, m) for i, m in pairs("validation") if (np.asarray(Image.open(m).convert("L")) > 127).any()]
+    random.Random(0).shuffle(cases)
+    errs = []
+    for img, mask in cases[:n]:
+        out = post("wound-segmentation", img.read_bytes(), token)
+        area = {q["name"]: q["value"] for q in out["measurements"]}["wound_area"]
+        truth = int((np.asarray(Image.open(mask).convert("L")) > 127).sum())
+        errs.append(abs(area - truth) / truth)
+    rec = recorded("wound-segmentation")
+    return {"n": len(errs), "served_median_area_error": round(float(np.median(errs)), 4),
+            "recorded_median_area_error": rec.get("median_area_error"),
+            "served_area_within_20pct": round(float(np.mean(np.array(errs) <= 0.2)), 4),
+            "recorded_area_within_20pct": rec.get("area_within_20pct")}
+
+
+def check_eeg(n: int, token: str) -> dict:
+    """Whole test-patient recordings through the API vs the training code's alarm computation."""
+    import torch
+    from app.models.eeg_seizure import alarm_events, alarm_score
+    from app.models.resnet1d import ResNet1d
+    from . import train_eeg as te
+    _, files, _, _, test_p = te.split_patients(42)
+    meta = json.loads((default_model_dir() / te.META_FILE).read_text())
+    net = ResNet1d(1, leads=len(te.MONTAGE))
+    net.load_state_dict(torch.load(default_model_dir() / te.WEIGHTS_FILE, map_location="cpu", weights_only=True))
+    recs = files(test_p)
+    random.Random(0).shuffle(recs)
+    peak_diff, same_count = [], 0
+    for path, spans in recs[:n]:
+        out = post("eeg-seizure", path.read_bytes(), token)
+        served_peak = {q["label"]: q["probability"] for q in out["predictions"]}["SEIZURE_ACTIVITY"]
+        served_alarms = {q["name"]: q["value"] for q in out["measurements"]}["seizure_alarms"]
+        r = te.recording_probabilities(net, [(path, spans)], torch.device("cpu"))[0]
+        score = alarm_score(r["p"], meta["threshold"], meta["min_windows"])
+        peak_diff.append(abs(served_peak - float(score.max())))
+        same_count += int(served_alarms == len(alarm_events(score, r["starts"], te.WINDOW)))
+    return {"recordings": len(peak_diff), "max_peak_score_difference": round(max(peak_diff), 6),
+            "same_alarm_count": f"{same_count}/{len(peak_diff)}"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("models", nargs="*")
     ap.add_argument("--n", type=int, default=200)
     args = ap.parse_args()
     token = os.environ["AEGLE_INFERENCE_TOKEN"]
-    skip = {"eeg-seizure", "wound-segmentation"}      # whole recordings / masks: checked by their own tests
-    models = args.models or [m for m in ADAPTERS if m not in skip]
+    models = args.models or list(ADAPTERS)
     for model_id in models:
         module = __import__(ADAPTERS[model_id].__module__, fromlist=["META_FILE"])
         if not (default_model_dir() / module.META_FILE).exists():
             print(f"{model_id:28} not trained here, skipped")
             continue
-        result = check_ecg(args.n, token) if model_id == "ecg-rhythm" else check_images(model_id, args.n, token)
+        special = {"ecg-rhythm": check_ecg, "wound-segmentation": check_wound,
+                   "eeg-seizure": lambda n, t: check_eeg(min(n, 6), t)}          # EEG: whole recordings, slow
+        result = special[model_id](args.n, token) if model_id in special else check_images(model_id, args.n, token)
         print(f"{model_id:28} {json.dumps(result)}", flush=True)
 
 
