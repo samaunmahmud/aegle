@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StubInferenceClient implements InferenceClient {
 
     public volatile String weightsSha = "sha-test-1";
+    public volatile Map<String, Object> metrics = Map.of("note", "stub");
     public volatile RuntimeException failure;
     /** Measurements returned with every prediction; the 10th image byte, if set, is the area. */
     public volatile boolean measure;
@@ -23,6 +24,7 @@ public class StubInferenceClient implements InferenceClient {
 
     public void reset() {
         weightsSha = "sha-test-1";
+        metrics = Map.of("note", "stub");
         failure = null;
         calls.set(0);
         renders.set(0);
@@ -31,7 +33,7 @@ public class StubInferenceClient implements InferenceClient {
 
     public ModelInfo info() {
         return new ModelInfo("chest-xray-pneumonia", "test-1", "XR", "CHEST", "classification",
-                "test model", weightsSha, Map.of("note", "stub"));
+                "test model", weightsSha, metrics);
     }
 
     @Override

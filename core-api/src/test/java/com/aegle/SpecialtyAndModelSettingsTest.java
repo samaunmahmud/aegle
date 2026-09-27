@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.aegle.support.IntegrationTestBase;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -115,6 +116,14 @@ class SpecialtyAndModelSettingsTest extends IntegrationTestBase {
         assertThat(rows.get(0).get("open").asLong()).isEqualTo(2);
         assertThat(rows.get(0).get("urgent").asLong()).isEqualTo(2);     // image(60): pneumonia, URGENT
         mvc.perform(get("/api/worklist/summary").with(as("aud-" + org, org, "AUDITOR"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void newEvaluationResultsForTheSameWeightsReachTheRegistry() throws Exception {
+        inference.metrics = Map.of("test", Map.of("auc", 0.91, "shortcut_baseline", Map.of("auc", 0.5)));
+        registry.sync();
+        mvc.perform(get("/api/models").with(radiologist()))
+                .andExpect(jsonPath("$[0].metrics.test.shortcut_baseline.auc").value(0.5));
     }
 
     @Test

@@ -43,7 +43,7 @@ export function OverviewPage() {
   return (
     <div>
       <PageHeader
-        icon={<Icon.Worklist />}
+        icon={<Icon.Overview />}
         title="Department overview"
         subtitle="Open AI-triaged work across every specialty. Refreshes every 30 seconds."
       />
@@ -78,7 +78,11 @@ export function OverviewPage() {
           const spModels = live.filter((m) => m.specialty === sp.id);
           const openCount = s ? s.open + s.inReview : 0;
           return (
-            <Link key={sp.id} to={`/worklist/${sp.slug}`} className="panel specialty-tile">
+            <Link
+              key={sp.id}
+              to={`/worklist/${sp.slug}`}
+              className={`panel specialty-tile${openCount === 0 && spModels.length === 0 ? " specialty-tile-idle" : ""}`}
+            >
               <div className="specialty-tile-head">
                 <span className="page-title-icon">
                   <SpecialtyIcon specialty={sp.id} />

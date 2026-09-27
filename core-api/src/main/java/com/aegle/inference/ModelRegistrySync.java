@@ -77,10 +77,13 @@ public class ModelRegistrySync {
                         + "Bump the version to register it. Refusing.", m.id(), m.version());
                 return;
             }
+            // Same weights: evaluation results may have been added since (e.g. a new check),
+            // so keep the published metrics current. Different weights are refused above.
             versionId = jdbc.sql("""
-                    UPDATE model_versions SET weights_sha256 = :h
+                    UPDATE model_versions SET weights_sha256 = :h, validation_metrics = CAST(:metrics AS jsonb)
                     WHERE model_id = :m AND version = :v RETURNING id""")
-                    .param("h", m.weightsSha256()).param("m", modelId).param("v", m.version())
+                    .param("h", m.weightsSha256()).param("metrics", toJson(m)).param("m", modelId)
+                    .param("v", m.version())
                     .query(UUID.class).single();
         } else {
             versionId = jdbc.sql("""

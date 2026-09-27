@@ -92,7 +92,7 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "neurology",
     name: "Neurology",
     summary: "Brain CT and MRI, EEG",
-    planned: ["Acute stroke and haemorrhage on head CT: needs access to a labelled dataset (RSNA ICH or ISLES registration)"],
+    planned: [],
     presets: [
       { label: "Brain MRI (T1 contrast)", modality: "MR", bodyPart: "BRAIN" },
       { label: "Head CT", modality: "CT", bodyPart: "BRAIN" },

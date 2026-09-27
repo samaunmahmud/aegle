@@ -14,7 +14,7 @@ export function StudyDetailPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
-  const [opacity, setOpacity] = useState(0.7);
+  const [opacity, setOpacity] = useState(0.45);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,6 +133,9 @@ export function StudyDetailPage() {
                     aria-label="Heatmap opacity"
                   />
                 </label>
+                <span className="heat-legend" aria-label="Colour scale: blue is low, red is high model attention">
+                  low <span className="heat-legend-bar" /> high attention
+                </span>
               </>
             ) : (
               <span>No heatmap for this study</span>
@@ -142,7 +145,7 @@ export function StudyDetailPage() {
             <div className="viewer-overlay-text">
               {study.modality} {study.bodyPart}
               <br />
-              {study.studyDate ?? "date n/a"}
+              {study.studyDate ?? `received ${new Date(study.createdAt).toLocaleDateString()}`}
               <br />
               {patient.mrn}
             </div>
@@ -287,7 +290,8 @@ function Finding({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  // Unreviewed findings show the decision straight away: reviewing is the point of the page.
+  const [open, setOpen] = useState(!alreadyReviewed);
 
   async function submitReview() {
     setSubmitting(true);

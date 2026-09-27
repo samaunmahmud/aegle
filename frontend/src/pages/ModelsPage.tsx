@@ -51,62 +51,7 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
             {model.activeVersion ? ` · v${model.activeVersion}` : ""}
           </div>
         </div>
-        {!model.activeVersion ? (
-          <span className="badge badge-neutral">Not deployed</span>
-        ) : model.enabledForOrganisation ? (
-          <span className="badge badge-routine">Active</span>
-        ) : (
-          <span className="badge badge-done">Off here</span>
-        )}
-      </div>
-      <div className="panel-body">
-        {shown.length > 0 && (
-          <div>
-            <div className="stat-label" style={{ marginBottom: "0.35rem" }}>
-              Held-out test ({String(test?.["n"] ?? "?")} cases)
-            </div>
-            <div className="metric-row">
-              {shown.map((k) => {
-                const v = test![k.key] as number;
-                return (
-                  <div key={k.key} className="metric">
-                    <div className="metric-value">
-                      {k.percent ? `${(v * 100).toFixed(1)}%` : k.plain ? v.toFixed(2) : v.toFixed(3)}
-                    </div>
-                    <div className="metric-label">{k.label}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {baselineAuc != null && modelAuc != null && (
-          <div className="small" title="A trivial model using only image size, colour statistics and file size. If it scores close to the real model, the result may reflect how images were acquired rather than disease.">
-            <strong>Shortcut check:</strong> a trivial model on image size and colour alone reaches AUC{" "}
-            {baselineAuc.toFixed(2)} (this model {modelAuc.toFixed(2)})
-            {modelAuc - baselineAuc < 0.05 ? " — too close: treat the result as unproven." : "."}
-          </div>
-        )}
-        <div className="callout">
-          <Icon.Alert />
-          <div>{model.intendedUse}</div>
-        </div>
-        {typeof dataset === "string" && (
-          <div className="small">
-            <strong>Training data:</strong> {dataset}
-          </div>
-        )}
-        {typeof caveat === "string" && <div className="small muted">{caveat}</div>}
-        <div className="toolbar" style={{ justifyContent: "space-between", marginTop: "auto" }}>
-          <span className="cell-secondary">
-            {model.approvedAt ? `Approved ${dateTime(model.approvedAt)}` : "Awaiting platform approval"}
-            {model.weightsSha256 && (
-              <>
-                {" · "}
-                <code title={model.weightsSha256}>{model.weightsSha256.slice(0, 12)}</code>
-              </>
-            )}
-          </span>
+        <div className="toolbar">
           {canToggle && model.activeVersion && (
             <label className="switch">
               <input
@@ -118,6 +63,68 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
               Run here
             </label>
           )}
+          {!model.activeVersion ? (
+            <span className="badge badge-neutral">Not deployed</span>
+          ) : model.enabledForOrganisation ? (
+            <span className="badge badge-routine">Active</span>
+          ) : (
+            <span className="badge badge-done">Off here</span>
+          )}
+        </div>
+      </div>
+      <div className="model-card-body">
+        <div className="model-card-results">
+          {shown.length > 0 ? (
+            <>
+              <div className="stat-label">Held-out test · {String(test?.["n"] ?? "?")} cases the model never saw</div>
+              <div className="metric-row">
+                {shown.map((k) => {
+                  const v = test![k.key] as number;
+                  return (
+                    <div key={k.key} className="metric">
+                      <div className="metric-value">
+                        {k.percent ? `${(v * 100).toFixed(1)}%` : k.plain ? v.toFixed(2) : v.toFixed(3)}
+                      </div>
+                      <div className="metric-label">{k.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="muted small">No held-out results recorded.</div>
+          )}
+          {baselineAuc != null && modelAuc != null && (
+            <div
+              className={`shortcut ${modelAuc - baselineAuc < 0.05 ? "shortcut-bad" : "shortcut-ok"}`}
+              title="A trivial model using only image size, colour statistics and file size. If it scores close to the real model, the result may reflect how images were acquired rather than disease."
+            >
+              <strong>Shortcut check</strong> · image size and colour alone reach AUC {baselineAuc.toFixed(2)}{" "}
+              (model {modelAuc.toFixed(2)})
+              {modelAuc - baselineAuc < 0.05 ? ": too close, treat the result as unproven." : ""}
+            </div>
+          )}
+          <div className="cell-secondary">
+            {model.approvedAt ? `Approved ${dateTime(model.approvedAt)}` : "Awaiting platform approval"}
+            {model.weightsSha256 && (
+              <>
+                {" · weights "}
+                <code title={model.weightsSha256}>{model.weightsSha256.slice(0, 12)}</code>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="model-card-context">
+          <div className="callout">
+            <Icon.Alert />
+            <div>{model.intendedUse}</div>
+          </div>
+          {typeof dataset === "string" && (
+            <div className="small">
+              <strong>Training data:</strong> {dataset}
+            </div>
+          )}
+          {typeof caveat === "string" && <div className="small muted">{caveat}</div>}
         </div>
       </div>
     </article>
@@ -171,6 +178,9 @@ export function ModelsPage() {
             <h2 className="specialty-chip" style={{ fontSize: "0.95rem", color: "var(--text)", marginBottom: "0.6rem" }}>
               <SpecialtyIcon specialty={sp.id} /> {sp.name}
             </h2>
+            {own.length === 0 && (
+              <div className="panel panel-body small muted">No AI model is deployed for {sp.name.toLowerCase()} yet.</div>
+            )}
             {own.length > 0 && (
               <div className="model-grid">
                 {own.map((m) => (
