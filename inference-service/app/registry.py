@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from .base import ModelAdapter, ModelUnavailable
-from .models import (blood_smear_malaria, brain_mri_tumor, chest_xray_pneumonia, colonoscopy, head_ct_stroke,
+from .models import (blood_smear_malaria, brain_mri_tumor, chest_xray_pneumonia, colonoscopy,
                      prostate_gleason,
                      colorectal_tissue, ecg_rhythm, eeg_seizure, fundus_retinopathy,
                      skin_lesion, wound)
@@ -29,7 +29,8 @@ ADAPTERS: dict[str, type[ModelAdapter]] = {
     colorectal_tissue.MODEL_ID: colorectal_tissue.ColorectalTissue,
     eeg_seizure.MODEL_ID: eeg_seizure.EegSeizure,
     wound.MODEL_ID: wound.WoundSegmentation,
-    head_ct_stroke.MODEL_ID: head_ct_stroke.HeadCtStroke,
+    # head-ct-stroke is withdrawn: on its 99-patient dataset it overfits after two epochs and
+    # finds 15% of ischaemic-stroke slices; see training/train_stroke.py.
     prostate_gleason.MODEL_ID: prostate_gleason.ProstateGleason,
 }
 

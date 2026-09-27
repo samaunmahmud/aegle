@@ -91,11 +91,10 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     id: "NEUROLOGY",
     slug: "neurology",
     name: "Neurology",
-    summary: "Brain CT and MRI, EEG",
-    planned: [],
+    summary: "Brain MRI, EEG",
+    planned: ["Head CT stroke triage: first model withdrawn (99 patients were too few; it missed most ischaemic strokes); needs a large set such as RSNA Intracranial Haemorrhage"],
     presets: [
       { label: "Brain MRI (T1 contrast)", modality: "MR", bodyPart: "BRAIN" },
-      { label: "Head CT", modality: "CT", bodyPart: "BRAIN" },
       { label: "Scalp EEG (EDF)", modality: "EEG", bodyPart: "BRAIN" },
     ],
   },

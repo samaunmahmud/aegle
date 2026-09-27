@@ -9,7 +9,7 @@ deployed service; demo logins and paths are for the local dev stack.
 | `shots.py OUTDIR [page ...]` | Screenshots every page as each role via Playwright (`pip install playwright && playwright install chromium`) |
 | `seed_demo.py API TOKENFILE CA` | Uploads one held-out case per specialty to a running stack |
 | `send_cxr.py CERTS JPEG AET MRN` | Acts as a CR modality: sends a chest X-ray as DICOM over mutual TLS |
-| `send_ct_series.py CERTS DATADIR PATIENT AET MRN` | Sends a held-out head CT patient as one DICOM CT series |
+| `send_ct_series.py CERTS DATADIR PATIENT AET MRN` | Sends a held-out head CT patient as one DICOM CT series (series import only: the stroke model is withdrawn) |
 | `train_queue*.sh` | Train the models one after another; logs in `$AEGLE_LOG_DIR` (default /tmp/aegle-training) |
 
 The DICOM senders need `pip install pynetdicom pydicom pillow numpy` and the modality

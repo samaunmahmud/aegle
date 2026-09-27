@@ -44,7 +44,7 @@ Java/DL4J pneumonia prototype is documented in
 | Ophthalmology | diabetic retinopathy grade (glaucoma withdrawn: dataset shortcut) |
 | Pathology | malaria on blood-smear cells, colorectal tissue classes, prostate Gleason patterns |
 | Gastroenterology | colonoscopy frames: polyp, ulcerative colitis, normal, inadequate view |
-| Neurology | head CT stroke triage, brain MRI tumour type, EEG seizure detection |
+| Neurology | brain MRI tumour type, EEG seizure detection (head CT stroke withdrawn: too few patients) |
 
 Every model is evaluated on patients (or lesions, or recordings) it never trained on, and
 each image model is checked against a trivial "shortcut" baseline that sees only image

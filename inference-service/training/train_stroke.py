@@ -1,5 +1,9 @@
 """Train the head CT stroke classifier (split by patient).
 
+WITHDRAWN (not served): with 99 patients it overfits after two epochs (validation balanced
+accuracy 0.53) and finds 15% of ischaemic-stroke slices in held-out patients. Haemorrhage
+triage needs a far larger set, such as RSNA Intracranial Haemorrhage (25,000 CT exams).
+
     cd inference-service
     python -m training.prepare_stroke
     python -m training.train_stroke
