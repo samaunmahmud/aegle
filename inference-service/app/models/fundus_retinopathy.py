@@ -19,6 +19,6 @@ class FundusRetinopathy(ResNetClassifier):
         "Research prototype. Suggests a diabetic retinopathy grade (none, mild, moderate, severe, "
         "proliferative; international scale) for one colour fundus photograph of a person with "
         "diabetes, to help order screening review. It does not assess diabetic macular oedema or "
-        "any other eye disease, and was trained on 1,600 images from one Chinese screening "
-        "programme. A trained grader or ophthalmologist decides the grade and referral."
+        "any other eye disease, and was trained on 1,600 photos of 400 patients from one Chinese "
+        "screening programme. A trained grader or ophthalmologist decides the grade and referral."
     )

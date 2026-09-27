@@ -1,8 +1,13 @@
-"""Train the diabetic retinopathy grader (5 grades) on RetinaMNIST-224 / DeepDRiD.
+"""Train the diabetic retinopathy grader (5 grades) on full-resolution DeepDRiD.
 
     cd inference-service
     python -m training.prepare_ophthalmology
     python -m training.train_retinopathy
+
+v0.2 over v0.1 (RetinaMNIST, 224 px): the original photos cropped to the retina at
+512 px, so microaneurysms and small haemorrhages (a few pixels at 224) stay visible;
+patient ids, so validation is patient-level; and the challenge's evaluation patients,
+never used before, as the test set.
 """
 from app.models.fundus_retinopathy import META_FILE, MODEL_ID, WEIGHTS_FILE
 
@@ -14,14 +19,22 @@ TASK = Task(
     weights_file=WEIGHTS_FILE,
     meta_file=META_FILE,
     labels=DR_LABELS,
-    data_dir=REPO_ROOT / "dataset" / "retina_dr",
-    dataset="RetinaMNIST-224 (MedMNIST+, CC BY 4.0) from DeepDRiD (Liu et al., 2022): 1,600 colour "
-            "fundus photographs, Shanghai diabetic screening, international 0-4 DR grades; the "
-            "source's own train/val/test split (1,080/120/400)",
-    caveat="Small, single-programme dataset; published results on it are modest (about 0.5 accuracy); "
-           "not validated elsewhere; do not use for clinical decisions.",
-    epochs=20,
-    rotation=15,
+    data_dir=REPO_ROOT / "dataset" / "retina_dr_full",
+    dataset="DeepDRiD regular fundus images (Liu et al., 2022; CC BY-SA 4.0): 2,000 colour fundus "
+            "photographs of 500 patients (two views per eye), Shanghai diabetic screening, international "
+            "0-4 DR grades; trained on 340 patients, validated on 60, tested on the challenge's 100 "
+            "evaluation patients",
+    caveat="Small, single-programme dataset from Chinese screening clinics; grades of neighbouring "
+           "levels (mild vs moderate) are hard even for graders; not validated elsewhere; do not use "
+           "for clinical decisions.",
+    version="0.2.0",
+    input_size=512,
+    batch_size=16,
+    epochs=25,
+    rotation=30,
+    crop_fundus=True,
+    ordinal=True,
+    refer_from=DR_LABELS.index("DR_MODERATE"),
 )
 
 if __name__ == "__main__":

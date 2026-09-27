@@ -32,14 +32,14 @@ from pathlib import Path
 import numpy as np
 import torch
 from PIL import Image
-from sklearn.metrics import confusion_matrix, roc_auc_score
+from sklearn.metrics import cohen_kappa_score, confusion_matrix, roc_auc_score
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 
 from app.gradcam import grad_cam
-from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, blank_regions, build_resnet18
+from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, blank_regions, build_resnet18, crop_fundus
 from app.registry import default_model_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -66,6 +66,11 @@ class Task:
     grayscale: bool = False          # radiology: single channel replicated; colour imaging keeps RGB
     # Fractions (x0, y0, x1, y1) of the frame blacked out in training and serving: burnt-in overlays.
     mask_regions: list = field(default_factory=list)
+    crop_fundus: bool = False        # crop to the round retina (training and serving)
+    # Labels are ordered grades: also report quadratic weighted kappa and, if set, how well
+    # "grade >= refer_from" (the referral decision) is separated.
+    ordinal: bool = False
+    refer_from: int | None = None
     extra_meta: dict = field(default_factory=dict)
 
 
@@ -118,7 +123,8 @@ class ImageRows(Dataset):
         r = self.rows[i]
         img = Image.open(self.task.data_dir / r["file"])
         img = img.convert("L").convert("RGB") if self.task.grayscale else img.convert("RGB")
-        return self.transform(blank_regions(img, self.task.mask_regions)), r["y"]
+        img = blank_regions(img, self.task.mask_regions)
+        return self.transform(crop_fundus(img) if self.task.crop_fundus else img), r["y"]
 
 
 def transforms(task: Task):
@@ -181,6 +187,22 @@ def metrics(p: np.ndarray, y: np.ndarray, labels: list[str]) -> dict:
         "per_class": per_class,
         "confusion": {"labels": labels, "rows_true_cols_predicted": cm.tolist()},
     }
+
+
+def ordinal_metrics(p: np.ndarray, y: np.ndarray, refer_from: int | None) -> dict:
+    """For graded labels: agreement that penalises far-off grades more (quadratic kappa),
+    and the referral decision (grade >= refer_from) from the predicted grade."""
+    pred = p.argmax(axis=1)
+    out = {"quadratic_kappa": round(float(cohen_kappa_score(y, pred, weights="quadratic")), 4)}
+    if refer_from is not None:
+        pos, called = y >= refer_from, pred >= refer_from
+        out["referable"] = {
+            "n_positive": int(pos.sum()),
+            "sensitivity": round(float((called & pos).sum() / max(1, pos.sum())), 4),
+            "specificity": round(float((~called & ~pos).sum() / max(1, (~pos).sum())), 4),
+            "auc": round(float(roc_auc_score(pos, p[:, refer_from:].sum(axis=1))), 4) if 0 < pos.sum() < len(pos) else None,
+        }
+    return out
 
 
 def image_stats(path: Path, mask_regions=()) -> list[float]:
@@ -308,7 +330,10 @@ def run(task: Task, argv=None) -> dict:
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
     model.load_state_dict(best_state)
-    test = metrics(*predict_all(model, test_dl, device), task.labels)
+    p_test, y_test = predict_all(model, test_dl, device)
+    test = metrics(p_test, y_test, task.labels)
+    if task.ordinal:
+        test.update(ordinal_metrics(p_test, y_test, task.refer_from))
     if test_rows and test_rows[0].get("mask"):
         test["attention_on_lesion"] = attention_on_lesion(model, task, test_rows, tf_eval, device)
     test["shortcut_baseline"] = shortcut_baseline(task, train_rows, test_rows)
@@ -328,6 +353,7 @@ def run(task: Task, argv=None) -> dict:
         "mean": IMAGENET_MEAN,
         "std": IMAGENET_STD,
         **({"mask_regions": task.mask_regions} if task.mask_regions else {}),
+        **({"crop_fundus": True} if task.crop_fundus else {}),
         "metrics": {
             "validation": best_val,
             "test": test,
