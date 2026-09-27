@@ -63,8 +63,10 @@ def section(model_id: str, meta: dict) -> list[str]:
         lines.append(f"**External test ({m['external_test']['n']} cases):** {headline(m['external_test'])}.")
     base = test.get("shortcut_baseline")
     if base:
-        lines.append(f"**Shortcut check:** image size/colour alone reaches AUC "
-                     f"{num(base.get('auc', base.get('macro_auc_ovr')))}.")
+        bal = test.get("balanced_accuracy", (test.get("sensitivity", 0) + test.get("specificity", 0)) / 2)
+        lines.append(f"**Shortcut check:** image size/colour alone reaches balanced accuracy "
+                     f"{pct(base['balanced_accuracy'])}, AUC {num(base.get('auc', base.get('macro_auc_ovr')))} "
+                     f"(model: {pct(bal)}, {num(test.get('auc', test.get('macro_auc_ovr')))}).")
     att = test.get("attention_on_lesion") or test.get("attention_on_tumour")
     if att:
         a = att["all"]
