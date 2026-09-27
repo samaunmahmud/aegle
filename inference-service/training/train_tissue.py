@@ -18,7 +18,9 @@ TASK = Task(
     dataset="Kather et al. 2019 (CC BY 4.0): trained on 22,500 tiles of NCT-CRC-HE-100K (86 patients), "
             "tested on CRC-VAL-HE-7K (7,180 tiles, 50 different patients); H&E, 0.5 um/px, Germany",
     caveat="Tile classification, not diagnosis or grading; test patients differ from training patients "
-           "but come from the same institutions and stain normalisation; do not use for clinical decisions.",
+           "but come from the same institutions and stain normalisation; validation tiles are not "
+           "patient-disjoint (the dataset has no patient IDs), so trust the test figures; cancer stroma "
+           "is often called smooth muscle (test sensitivity 67%); do not use for clinical decisions.",
     epochs=6,
     vflip=True,           # histology tiles have no orientation
     rotation=180,

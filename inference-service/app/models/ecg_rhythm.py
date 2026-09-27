@@ -22,7 +22,8 @@ INTENDED_USE = (
     "shows sinus rhythm, atrial fibrillation, sinus tachycardia, sinus bradycardia, sinus "
     "arrhythmia, a paced rhythm or supraventricular ectopy, using the first 10 seconds. "
     "Probabilities do not sum to one. It does not measure intervals, detect ischaemia or read "
-    "ambulatory or single-lead recordings; trained on German hospital ECGs (PTB-XL). A "
+    "ambulatory or single-lead recordings; trained on German hospital ECGs (PTB-XL). "
+    "Probabilities are calibrated on held-out PTB-XL patients. A "
     "clinician reads the ECG."
 )
 
@@ -40,6 +41,8 @@ class EcgRhythm(ModelAdapter):
         self._fs: float = meta["fs"]
         self._seconds: float = meta["seconds"]
         self._clip: float = meta["clip_mv"]
+        cal = meta.get("calibration")
+        self._platt = (torch.tensor(cal["a"]), torch.tensor(cal["b"])) if cal else None
         self._net = ResNet1d(len(self._labels))
         self._net.load_state_dict(torch.load(weights_path, map_location="cpu", weights_only=True))
         self._net.eval()
@@ -61,7 +64,10 @@ class EcgRhythm(ModelAdapter):
     def predict(self, image: Waveform, explain: bool = True) -> PredictionOutput:
         x = self._tensor(image)
         with torch.no_grad():
-            probs = torch.sigmoid(self._net(x))[0].tolist()
+            logits = self._net(x)[0]
+            if self._platt:
+                logits = logits * self._platt[0] + self._platt[1]
+            probs = torch.sigmoid(logits).tolist()
         preds = sorted((Prediction(label=l, probability=round(p, 6)) for l, p in zip(self._labels, probs)),
                        key=lambda p: p.probability, reverse=True)
         heatmap = None

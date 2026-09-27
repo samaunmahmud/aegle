@@ -10,6 +10,10 @@ scp_statements.csv and records100/ (the 100 Hz records) in <repo>/dataset/ptbxl/
 Split: the dataset's recommended stratified folds, which keep each patient in one fold:
 1-8 train, 9 validation, 10 test (folds 9 and 10 only contain labels a cardiologist
 validated). Rhythm statements with at least 150 recordings are modelled, independently.
+
+Calibration: the loss up-weights rare rhythms, which inflates their probabilities, so each
+label gets Platt scaling fitted on the validation fold (stored in the meta json, applied at
+serving). `--recalibrate` refits it for the saved weights without retraining.
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
@@ -35,7 +40,7 @@ from app.waveform import LEADS
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "dataset" / "ptbxl"
 FS, SECONDS, CLIP_MV = 100, 10, 5.0
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 # PTB-XL rhythm code -> Aegle label. Rarer rhythms (<150 recordings) are left out.
 RHYTHMS = {
     "SR": "SINUS_RHYTHM",
@@ -97,13 +102,57 @@ class EcgDataset(Dataset):
 
 
 @torch.no_grad()
-def predict_all(model, loader, device):
+def predict_logits(model, loader, device):
     model.eval()
-    ps, ys = [], []
+    zs, ys = [], []
     for x, y in loader:
-        ps.append(torch.sigmoid(model(x.to(device))).cpu().numpy())
+        zs.append(model(x.to(device)).cpu().numpy())
         ys.append(y.numpy())
-    return np.concatenate(ps), np.concatenate(ys)
+    return np.concatenate(zs), np.concatenate(ys)
+
+
+def predict_all(model, loader, device):
+    z, y = predict_logits(model, loader, device)
+    return 1 / (1 + np.exp(-z)), y
+
+
+def fit_platt(z: np.ndarray, y: np.ndarray) -> dict:
+    """Per-label p = sigmoid(a * logit + b), fitted by (nearly unregularised) logistic regression."""
+    a, b = [], []
+    for i in range(z.shape[1]):
+        lr = LogisticRegression(C=1e4).fit(z[:, i:i + 1], y[:, i])
+        a.append(round(float(lr.coef_[0, 0]), 6))
+        b.append(round(float(lr.intercept_[0]), 6))
+    return {"method": "platt, fitted on the validation fold", "a": a, "b": b}
+
+
+def apply_platt(z: np.ndarray, cal: dict) -> np.ndarray:
+    return 1 / (1 + np.exp(-(z * np.array(cal["a"]) + np.array(cal["b"]))))
+
+
+def calibrate_and_test(model, val_dl, test_dl, device):
+    z_val, y_val = predict_logits(model, val_dl, device)
+    z_test, y_test = predict_logits(model, test_dl, device)
+    cal = fit_platt(z_val, y_val)
+    val_m, test_m = metrics(apply_platt(z_val, cal), y_val), metrics(apply_platt(z_test, cal), y_test)
+    test_m["uncalibrated"] = metrics(1 / (1 + np.exp(-z_test)), y_test)
+    print("TEST (best-val checkpoint, calibrated):", json.dumps(test_m, indent=2), flush=True)
+    return cal, val_m, test_m
+
+
+def recalibrate(args, device):
+    """Refit the saved model's calibration (no retraining) and re-test."""
+    out_dir = args.out or default_model_dir()
+    recs = load(args.limit)
+    dl = lambda items: DataLoader(EcgDataset(items, False), batch_size=args.batch_size)  # noqa: E731
+    model = ResNet1d(len(LABELS)).to(device)
+    model.load_state_dict(torch.load(out_dir / WEIGHTS_FILE, map_location="cpu", weights_only=True))
+    cal, val_m, test_m = calibrate_and_test(model, dl(recs["val"]), dl(recs["test"]), device)
+    meta = json.loads((out_dir / META_FILE).read_text())
+    meta.update(version=VERSION, calibration=cal)
+    meta["metrics"].update(validation=val_m, test=test_m)
+    (out_dir / META_FILE).write_text(json.dumps(meta, indent=2))
+    print(f"updated {out_dir / META_FILE}", flush=True)
 
 
 def metrics(p: np.ndarray, y: np.ndarray) -> dict:
@@ -132,10 +181,14 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--device", default=None, help="default: mps when available")
+    ap.add_argument("--recalibrate", action="store_true", help="refit the saved model's calibration only")
     args = ap.parse_args()
 
     random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(args.device or ("mps" if torch.backends.mps.is_available() else "cpu"))
+    if args.recalibrate:
+        return recalibrate(args, device)
     out_dir = args.out or default_model_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -178,13 +231,12 @@ def main():
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
     model.load_state_dict(best_state)
-    test_m = metrics(*predict_all(model, test_dl, device))
-    print("TEST (best-val checkpoint):", json.dumps(test_m, indent=2), flush=True)
+    cal, best_val, test_m = calibrate_and_test(model, val_dl, test_dl, device)
 
     torch.save(best_state, out_dir / WEIGHTS_FILE)
     (out_dir / META_FILE).write_text(json.dumps({
         "model_id": MODEL_ID, "version": VERSION, "architecture": "resnet1d",
-        "labels": LABELS, "fs": FS, "seconds": SECONDS, "clip_mv": CLIP_MV,
+        "labels": LABELS, "fs": FS, "seconds": SECONDS, "clip_mv": CLIP_MV, "calibration": cal,
         "metrics": {
             "validation": best_val,
             "test": test_m,

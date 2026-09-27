@@ -105,8 +105,16 @@ def section(model_id: str, meta: dict) -> list[str]:
         lines += [f"| {k} | {v['n']} | {pct(v['sensitivity'])} | {pct(v['precision'])} |"
                   for k, v in test["per_class"].items()]
     if "per_label" in test:
-        lines += ["", "| Rhythm | Positives | AUC | Sensitivity | Specificity |", "|---|---|---|---|---|"]
-        lines += [f"| {k} | {v['n_positive']} | {num(v['auc'])} | {pct(v['sensitivity'])} | {pct(v['specificity'])} |"
+        if meta.get("calibration"):
+            lines += ["", "Probabilities are Platt-scaled per rhythm on the validation fold, so rare rhythms are "
+                          "no longer over-called; sensitivity, specificity and precision are at probability 0.5 "
+                          "(before scaling in brackets)."]
+        before = test.get("uncalibrated", {}).get("per_label", {})
+        both = lambda k, v, f: f"{pct(v[f])} ({pct(before[k][f])})" if k in before else pct(v[f])  # noqa: E731
+        lines += ["", "| Rhythm | Positives | AUC | Sensitivity | Specificity | Precision | Brier |",
+                  "|---|---|---|---|---|---|---|"]
+        lines += [f"| {k} | {v['n_positive']} | {num(v['auc'])} | {both(k, v, 'sensitivity')} | "
+                  f"{both(k, v, 'specificity')} | {both(k, v, 'precision')} | {num(v.get('brier'))} |"
                   for k, v in test["per_label"].items()]
     lines += ["", f"*Data:* {m.get('dataset', '–')}", "", f"*Caveat:* {m.get('caveat', '–')}", ""]
     return lines
