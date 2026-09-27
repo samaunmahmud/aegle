@@ -39,7 +39,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 
 from app.gradcam import grad_cam
-from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, build_resnet18
+from app.models.resnet import IMAGENET_MEAN, IMAGENET_STD, blank_regions, build_resnet18
 from app.registry import default_model_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -64,6 +64,8 @@ class Task:
     rotation: float = 10
     jitter: float = 0.2
     grayscale: bool = False          # radiology: single channel replicated; colour imaging keeps RGB
+    # Fractions (x0, y0, x1, y1) of the frame blacked out in training and serving: burnt-in overlays.
+    mask_regions: list = field(default_factory=list)
     extra_meta: dict = field(default_factory=dict)
 
 
@@ -116,7 +118,7 @@ class ImageRows(Dataset):
         r = self.rows[i]
         img = Image.open(self.task.data_dir / r["file"])
         img = img.convert("L").convert("RGB") if self.task.grayscale else img.convert("RGB")
-        return self.transform(img), r["y"]
+        return self.transform(blank_regions(img, self.task.mask_regions)), r["y"]
 
 
 def transforms(task: Task):
@@ -181,10 +183,10 @@ def metrics(p: np.ndarray, y: np.ndarray, labels: list[str]) -> dict:
     }
 
 
-def image_stats(path: Path) -> list[float]:
+def image_stats(path: Path, mask_regions=()) -> list[float]:
     """Features that say nothing about disease: size, colour mean/spread, file size."""
     im = Image.open(path)
-    a = np.asarray(im.convert("RGB").resize((64, 64)), dtype=np.float32)
+    a = np.asarray(blank_regions(im.convert("RGB"), mask_regions).resize((64, 64)), dtype=np.float32)
     return [im.size[0], im.size[1], *a.mean((0, 1)), *a.std((0, 1)), path.stat().st_size / 1e3]
 
 
@@ -197,7 +199,7 @@ def shortcut_baseline(task: Task, train_rows, test_rows) -> dict:
     from sklearn.linear_model import LogisticRegression
 
     def xy(rows):
-        return (np.array([image_stats(task.data_dir / r["file"]) for r in rows]),
+        return (np.array([image_stats(task.data_dir / r["file"], task.mask_regions) for r in rows]),
                 np.array([r["y"] for r in rows]))
 
     x_tr, y_tr = xy(train_rows)
@@ -216,7 +218,7 @@ def attention_on_lesion(model, task: Task, rows, tf_eval, device) -> dict:
     model.eval()
     inside, area, hits = {l: [] for l in task.labels}, {l: [] for l in task.labels}, {l: [] for l in task.labels}
     for r in rows:
-        img = Image.open(task.data_dir / r["file"]).convert("RGB")
+        img = blank_regions(Image.open(task.data_dir / r["file"]).convert("RGB"), task.mask_regions)
         mask_img = Image.open(task.data_dir / r["mask"]).convert("L").resize(img.size)
         x = tf_eval(img.convert("L").convert("RGB") if task.grayscale else img).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -325,6 +327,7 @@ def run(task: Task, argv=None) -> dict:
         "input_size": task.input_size,
         "mean": IMAGENET_MEAN,
         "std": IMAGENET_STD,
+        **({"mask_regions": task.mask_regions} if task.mask_regions else {}),
         "metrics": {
             "validation": best_val,
             "test": test,

@@ -16,7 +16,7 @@ from PIL import Image
 from ..base import (Heatmap, ModelAdapter, ModelInfo, ModelUnavailable, Prediction,
                     PredictionOutput)
 from ..gradcam import grad_cam, overlay_png
-from .resnet import build_resnet18
+from .resnet import blank_regions, build_resnet18
 
 
 class ResNetClassifier(ModelAdapter):
@@ -42,6 +42,7 @@ class ResNetClassifier(ModelAdapter):
         self._size: int = meta["input_size"]
         self._mean = torch.tensor(meta["mean"]).view(1, 3, 1, 1)
         self._std = torch.tensor(meta["std"]).view(1, 3, 1, 1)
+        self._mask_regions = meta.get("mask_regions", [])
 
         self._net = build_resnet18(len(self._labels), pretrained=False)
         # weights_only=True: never unpickle arbitrary objects from a weights file.
@@ -66,6 +67,7 @@ class ResNetClassifier(ModelAdapter):
 
     def _preprocess(self, image: Image.Image) -> torch.Tensor:
         img = image.convert("L").convert("RGB") if self.GRAYSCALE else image.convert("RGB")
+        img = blank_regions(img, self._mask_regions)
         img = img.resize((self._size, self._size), Image.BILINEAR)
         arr = np.asarray(img, dtype=np.float32) / 255.0
         x = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0)
