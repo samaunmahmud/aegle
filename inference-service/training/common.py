@@ -31,9 +31,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from PIL import Image, ImageFilter
+from PIL import Image
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from torch import nn
+from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 
@@ -224,7 +225,9 @@ def attention_on_lesion(model, task: Task, rows, tf_eval, device) -> dict:
         cam = np.asarray(Image.fromarray((cam * 255).astype(np.uint8)).resize(img.size, Image.BILINEAR),
                          dtype=np.float32) / 255
         mask = np.asarray(mask_img) > 0
-        near = np.asarray(mask_img.filter(ImageFilter.MaxFilter(31))) > 0
+        # Dilate the lesion by 15 px (a 31x31 max filter), via max-pooling: same result, far faster.
+        near = F.max_pool2d(torch.from_numpy(mask.astype(np.float32))[None, None], 31, stride=1,
+                            padding=15)[0, 0].numpy() > 0
         total = cam.sum()
         inside[r["label"]].append(float(cam[mask].sum() / total) if total > 0 else 0.0)
         area[r["label"]].append(float(mask.mean()))
