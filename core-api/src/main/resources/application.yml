@@ -143,5 +143,9 @@ aegle:
       HAEMORRHAGE: CRITICAL              # suspected intracranial bleed: read immediately
       ISCHAEMIC_STROKE: CRITICAL         # suspected stroke: time is brain
       NO_STROKE: ROUTINE
+      GLEASON_5: URGENT
+      GLEASON_4: URGENT
+      GLEASON_3: ROUTINE
+      BENIGN_PROSTATE: ROUTINE
     wait-bonus-per-hour: 0.5
     wait-bonus-cap: 20

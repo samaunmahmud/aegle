@@ -1,8 +1,9 @@
 # Aegle
 
-Clinical decision support for doctors and radiologists: AI-assisted triage and
-second opinions across medical images and reports. Aegle is a tool for
-clinicians only. It suggests, the clinician decides.
+Clinical decision support for hospital departments: AI-assisted triage and second
+opinions across radiology, cardiology, dermatology, ophthalmology, pathology,
+gastroenterology and neurology. Aegle is a tool for clinicians only. It suggests, the
+clinician decides.
 
 > Status: early development. Not a medical device and not for clinical use.
 
@@ -19,16 +20,35 @@ clinicians only. It suggests, the clinician decides.
         │
         ▼
  Inference workers (Python / FastAPI): one adapter per registered model
-   → probabilities + Grad-CAM heatmap + model version
+   images (PNG/JPEG/DICOM), ECG (DICOM waveform/CSV), EEG (EDF)
+   → probabilities + explanation (Grad-CAM, saliency, timeline) + measurements
+   + model version and weights hash
 
  Orthanc  – DICOM server (C-STORE / DICOMweb)
  Keycloak – identity provider (OIDC, MFA)
 ```
 
 Aegle is a platform of pluggable models. Each model is registered with a
-modality, body part, task and intended use. The chest X-ray pneumonia
-classifier is model #1; its original Java/DL4J prototype is documented in
+modality, body part, task and intended use; modality and body part also decide the
+clinical specialty a study belongs to, and each organisation can switch any model off.
+The models, their held-out results, data licences and known limitations are in
+[docs/models.md](docs/models.md) (generated from the training metadata). The original
+Java/DL4J pneumonia prototype is documented in
 [docs/pneumonia-prototype.md](docs/pneumonia-prototype.md).
+
+| Specialty | Models |
+|---|---|
+| Radiology | chest X-ray pneumonia |
+| Cardiology | 12-lead ECG rhythm (atrial fibrillation and 6 other rhythms) |
+| Dermatology | skin lesion (dermoscopy, 7 classes; non-commercial licence), wound outline and area over visits |
+| Ophthalmology | diabetic retinopathy grade (glaucoma withdrawn: dataset shortcut) |
+| Pathology | malaria on blood-smear cells, colorectal tissue classes, prostate Gleason patterns |
+| Gastroenterology | colonoscopy frames: polyp, ulcerative colitis, normal, inadequate view |
+| Neurology | head CT stroke triage, brain MRI tumour type, EEG seizure detection |
+
+Every model is evaluated on patients (or lesions, or recordings) it never trained on, and
+each image model is checked against a trivial "shortcut" baseline that sees only image
+size and colour statistics; a model that barely beats it is not trusted.
 
 Design rules:
 
@@ -147,7 +167,9 @@ Never commit patient or imaging data, datasets, or model weights.
 2. Backend API and inference pipeline — done
 3. Frontend dashboard and triage worklist — done (worklist, upload, study
    detail with Grad-CAM overlay, clinician review, audit log)
-4. Security and compliance — ongoing
-5. Additional disease models beyond chest X-ray pneumonia (the platform
-   supports this via the inference service's adapter registry, but each
-   model needs its own dataset, training and validation work)
+4. Security and compliance — done for this stage (service authentication, TLS
+   everywhere, tamper-evident audit, rate limits, per-organisation model control)
+5. Multi-specialty models — in progress (see the table above and docs/models.md)
+6. Blocked on data access: echocardiography (EchoNet data use agreement), leukaemia
+   on blood smears (C-NMC downloads only through IBM Aspera), glaucoma (needs a
+   dataset without acquisition confounds)

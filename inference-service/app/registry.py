@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .base import ModelAdapter, ModelUnavailable
 from .models import (blood_smear_malaria, brain_mri_tumor, chest_xray_pneumonia, colonoscopy, head_ct_stroke,
+                     prostate_gleason,
                      colorectal_tissue, ecg_rhythm, eeg_seizure, fundus_retinopathy,
                      skin_lesion, wound)
 
@@ -29,6 +30,7 @@ ADAPTERS: dict[str, type[ModelAdapter]] = {
     eeg_seizure.MODEL_ID: eeg_seizure.EegSeizure,
     wound.MODEL_ID: wound.WoundSegmentation,
     head_ct_stroke.MODEL_ID: head_ct_stroke.HeadCtStroke,
+    prostate_gleason.MODEL_ID: prostate_gleason.ProstateGleason,
 }
 
 
