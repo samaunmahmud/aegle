@@ -4,7 +4,7 @@ import { api, ApiError } from "../api/client";
 import type { PredictionView, ReviewDecision, StudyDetail } from "../api/types";
 import { StatusBadge, UrgencyBadge } from "../components/Badges";
 import { SpecialtyIcon } from "../components/Icons";
-import { MeasurementTrend } from "../components/MeasurementTrend";
+import { formatValue, MEASUREMENTS, MeasurementTrend, measurementTitle } from "../components/MeasurementTrend";
 import { age, dateTime, probability, titleCase } from "../format";
 import { specialtyById } from "../specialties";
 
@@ -142,13 +142,16 @@ export function StudyDetailPage() {
             )}
           </div>
           <div className="viewer-canvas">
-            <div className="viewer-overlay-text">
-              {study.modality} {study.bodyPart}
-              <br />
-              {study.studyDate ?? `received ${new Date(study.createdAt).toLocaleDateString()}`}
-              <br />
-              {patient.mrn}
-            </div>
+            {/* Recordings are drawn edge to edge with lead names at the left; the text would cover them. */}
+            {!recording && (
+              <div className="viewer-overlay-text">
+                {study.modality} {study.bodyPart}
+                <br />
+                {study.studyDate ?? `received ${new Date(study.createdAt).toLocaleDateString()}`}
+                <br />
+                {patient.mrn}
+              </div>
+            )}
             {imageUrl && recording ? (
               <div className="image-stack">
                 <img
@@ -227,11 +230,31 @@ export function StudyDetailPage() {
                 <span className="cell-secondary">AI-derived · verify clinically</span>
               </div>
               <div className="panel-body">
-                <MeasurementTrend
-                  title="Wound area"
-                  points={detail.measurementHistory.filter((m) => m.name === detail.measurements[0].name)}
-                  currentStudyId={study.id}
-                />
+                {detail.measurements
+                  .filter((m) => MEASUREMENTS[m.name]?.trend)
+                  .map((m) => (
+                    <MeasurementTrend
+                      key={m.name}
+                      title={measurementTitle(m.name)}
+                      note={MEASUREMENTS[m.name].note}
+                      points={detail.measurementHistory.filter((h) => h.name === m.name)}
+                      currentStudyId={study.id}
+                    />
+                  ))}
+                {detail.measurements.some((m) => !MEASUREMENTS[m.name]?.trend) && (
+                  <table className="data-table">
+                    <tbody>
+                      {detail.measurements
+                        .filter((m) => !MEASUREMENTS[m.name]?.trend)
+                        .map((m) => (
+                          <tr key={m.name}>
+                            <th scope="row">{measurementTitle(m.name)}</th>
+                            <td className="numeric">{formatValue(m.value, m.unit)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </section>
           )}

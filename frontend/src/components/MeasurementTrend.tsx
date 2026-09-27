@@ -5,9 +5,26 @@ const W = 360;
 const H = 150;
 const PAD = { left: 48, right: 16, top: 16, bottom: 28 };
 
-function formatValue(v: number, unit: string) {
+/** What each model measurement is called, and whether it can be followed across visits. */
+export const MEASUREMENTS: Record<string, { title: string; trend?: boolean; note?: string }> = {
+  wound_area: {
+    title: "Wound area",
+    trend: true,
+    note: "Comparable only between photos taken at the same distance and zoom.",
+  },
+  wound_area_fraction: { title: "Wound share of photo" },
+  seizure_alarms: { title: "Seizure alarms" },
+  alarm_duration: { title: "Time in alarm" },
+};
+
+export function measurementTitle(name: string) {
+  return MEASUREMENTS[name]?.title ?? name.replace(/_/g, " ");
+}
+
+export function formatValue(v: number, unit: string) {
   if (unit === "%") return `${v.toFixed(1)}%`;
   if (unit === "px") return `${Math.round(v).toLocaleString()} px`;
+  if (unit === "count") return Math.round(v).toLocaleString();
   return `${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`;
 }
 
@@ -18,10 +35,12 @@ function formatValue(v: number, unit: string) {
  */
 export function MeasurementTrend({
   title,
+  note,
   points,
   currentStudyId,
 }: {
   title: string;
+  note?: string;
   points: MeasurementPoint[];
   currentStudyId: string;
 }) {
@@ -147,7 +166,7 @@ export function MeasurementTrend({
           )}
         </svg>
       )}
-      <div className="cell-secondary">Comparable only between photos taken at the same distance and zoom.</div>
+      {note && <div className="cell-secondary">{note}</div>}
     </div>
   );
 }

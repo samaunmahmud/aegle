@@ -53,7 +53,9 @@ upload(ecg_dicom(read_record(DS / "ptbxl" / ptb[0]["filename_lr"]), 100.0), "ecg
 # Neurology: a test-patient EEG with a seizure.
 meta = json.loads((REPO / "saved-model/eeg-seizure-resnet1d.json").read_text())
 test_patient = meta["metrics"]["split"]["test_patients"][0]
-edf = next(p for p in sorted((DS / "chbmit" / test_patient).glob("*.edf")) if p.stat().st_size < 50_000_000)
+with_seizures = set((DS / "chbmit" / "RECORDS-WITH-SEIZURES").read_text().split())
+edf = next(p for p in sorted((DS / "chbmit" / test_patient).glob("*.edf"))
+           if f"{test_patient}/{p.name}" in with_seizures and p.stat().st_size < 100_000_000)  # upload limit
 upload(edf.read_bytes(), "eeg.edf", "MRN-300202", "Lucas Martin", "2014-07-22", "M", "EEG", "BRAIN")
 
 # Dermatology: an ISIC 2018 test-set melanoma (external test).
