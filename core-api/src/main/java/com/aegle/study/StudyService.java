@@ -281,16 +281,19 @@ public class StudyService {
     }
 
     /**
-     * The study's first image. Anything a browser cannot show (DICOM images and ECGs, ECG
+     * The study's key image. Anything a browser cannot show (DICOM images and ECGs, ECG
      * CSVs) is returned as a PNG rendering made by the inference service on first view and
      * kept next to the original.
      */
     public ImageBytes image(Actor actor, UUID studyId) {
         record Ref(UUID id, String key, String mime, String previewKey) {}
         Ref ref = tenantTx.executeAs(actor.orgId(), () -> {
+            // The image the AI finding came from (its heatmap's instance) if there is one, so the
+            // viewer opens on the key slice of a series; otherwise the first image.
             Ref r = jdbc.sql("""
-                    SELECT id, storage_key, mime_type, preview_key FROM instances
-                    WHERE study_id = :id ORDER BY created_at LIMIT 1""")
+                    SELECT i.id, i.storage_key, i.mime_type, i.preview_key FROM instances i
+                    LEFT JOIN heatmaps h ON h.instance_id = i.id
+                    WHERE i.study_id = :id ORDER BY (h.id IS NULL), i.created_at LIMIT 1""")
                     .param("id", studyId)
                     .query((rs, i) -> new Ref(rs.getObject("id", UUID.class), rs.getString("storage_key"),
                             rs.getString("mime_type"), rs.getString("preview_key")))

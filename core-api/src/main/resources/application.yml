@@ -140,5 +140,8 @@ aegle:
       NO_SEIZURE_ACTIVITY: ROUTINE
       WOUND_DETECTED: ROUTINE            # tracking, not triage: area trend is shown on the study
       NO_WOUND_DETECTED: ROUTINE
+      HAEMORRHAGE: CRITICAL              # suspected intracranial bleed: read immediately
+      ISCHAEMIC_STROKE: CRITICAL         # suspected stroke: time is brain
+      NO_STROKE: ROUTINE
     wait-bonus-per-hour: 0.5
     wait-bonus-cap: 20

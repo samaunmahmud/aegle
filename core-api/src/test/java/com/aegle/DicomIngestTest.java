@@ -99,6 +99,29 @@ class DicomIngestTest extends IntegrationTestBase {
     }
 
     @Test
+    void aSeriesTakesItsMostUrgentImageAndTheViewerOpensOnIt() throws Exception {
+        register(org, aet);
+        String sid = "orthanc-" + UUID.randomUUID();
+        List<InstanceInfo> instances = List.of(
+                new InstanceInfo(sid + "-a", "1.9.1", aet, "DX", "CHEST", Map.of()),
+                new InstanceInfo(sid + "-b", "1.9.2", aet, "DX", "CHEST", Map.of()),
+                new InstanceInfo(sid + "-c", "1.9.3", aet, "DX", "CHEST", Map.of()));
+        orthanc.send(new StudyInfo(sid, "1.2.840.9", "ACC-S", "20260920", "MRN-SERIES", "SERIES^PT", null, "F",
+                instances), Map.of(sid + "-a", image(10), sid + "-b", image(92), sid + "-c", image(30)));
+        ingestor.ingestPending();
+        worker.runOnce(org);
+
+        UUID studyId = owner.queryForObject("SELECT id FROM studies WHERE orthanc_study_id = ?", UUID.class, sid);
+        mvc.perform(get("/api/studies/" + studyId).with(radiologist()))
+                .andExpect(jsonPath("$.predictions[0].label").value("PNEUMONIA"))
+                .andExpect(jsonPath("$.predictions[0].probability").value(0.92));
+        assertThat(inference.calls.get()).isEqualTo(3);
+        assertThat(owner.queryForObject("""
+                SELECT i.dicom_sop_uid FROM heatmaps h JOIN instances i ON i.id = h.instance_id
+                WHERE i.study_id = ?""", String.class, studyId)).isEqualTo("1.9.2");
+    }
+
+    @Test
     void eachOrthancStudyIsIngestedOnlyOnce() throws Exception {
         register(org, aet);
         StudyInfo sent = sendChestXray(aet, 20);

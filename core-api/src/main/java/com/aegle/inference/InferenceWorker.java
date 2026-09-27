@@ -6,6 +6,7 @@ import com.aegle.storage.ObjectStore;
 import com.aegle.tenant.TenantTx;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +34,13 @@ public class InferenceWorker {
     private record ModelRef(String name, String weightsSha256) {}
 
     private record InstanceRef(UUID id, String storageKey) {}
+
+    /**
+     * A series (CT slices, several photos, video frames) is analysed image by image, and the
+     * study takes the result of its most urgent image by triage score. Capped so one huge
+     * series cannot monopolise the worker.
+     */
+    static final int MAX_INSTANCES_PER_STUDY = 300;
 
     private final JdbcClient jdbc;
     private final TenantTx tenantTx;
@@ -118,19 +126,32 @@ public class InferenceWorker {
                     WHERE mv.id = :id""").param("id", job.modelVersionId())
                     .query((rs, i) -> new ModelRef(rs.getString("name"), rs.getString("weights_sha256"))).single();
 
-            InstanceRef instance = tenantTx.executeAs(orgId, () -> jdbc.sql("""
-                    SELECT id, storage_key FROM instances WHERE study_id = :s ORDER BY created_at LIMIT 1""")
-                    .param("s", job.studyId())
+            List<InstanceRef> instances = tenantTx.executeAs(orgId, () -> jdbc.sql("""
+                    SELECT id, storage_key FROM instances WHERE study_id = :s ORDER BY created_at LIMIT :max""")
+                    .param("s", job.studyId()).param("max", MAX_INSTANCES_PER_STUDY)
                     .query((rs, i) -> new InstanceRef(rs.getObject("id", UUID.class), rs.getString("storage_key")))
-                    .single());
+                    .list());
+            if (instances.isEmpty()) {
+                throw new InferenceClient.NonRetryableInferenceException("Study has no images");
+            }
 
-            InferenceClient.Result result = inference.predict(model.name(), store.get(instance.storageKey()));
-
-            // The queued job was approved for specific weights. If the service now serves
-            // different ones, storing the result under that version would be a lie.
-            if (model.weightsSha256() != null && !model.weightsSha256().equals(result.model().weightsSha256())) {
-                throw new InferenceClient.NonRetryableInferenceException(
-                        "Inference service is serving different weights than the approved model version");
+            InstanceRef instance = null;
+            InferenceClient.Result result = null;
+            double best = Double.NEGATIVE_INFINITY;
+            for (InstanceRef candidate : instances) {
+                InferenceClient.Result r = inference.predict(model.name(), store.get(candidate.storageKey()));
+                // The queued job was approved for specific weights. If the service now serves
+                // different ones, storing the result under that version would be a lie.
+                if (model.weightsSha256() != null && !model.weightsSha256().equals(r.model().weightsSha256())) {
+                    throw new InferenceClient.NonRetryableInferenceException(
+                            "Inference service is serving different weights than the approved model version");
+                }
+                double score = triage.score(r.predictions()).priority();
+                if (score > best) {
+                    best = score;
+                    instance = candidate;
+                    result = r;
+                }
             }
 
             String heatmapKey = null;
@@ -138,16 +159,18 @@ public class InferenceWorker {
                 heatmapKey = orgId + "/studies/" + job.studyId() + "/heatmaps/" + UUID.randomUUID() + ".png";
                 store.put(heatmapKey, result.heatmap().png(), "image/png");
             }
-            complete(orgId, job, instance, result, heatmapKey);
+            complete(orgId, job, instance, result, heatmapKey, instances.size());
         } catch (Exception e) {
             fail(orgId, job, e);
         }
     }
 
-    private void complete(UUID orgId, Job job, InstanceRef instance, InferenceClient.Result result, String heatmapKey) {
+    private void complete(UUID orgId, Job job, InstanceRef instance, InferenceClient.Result result, String heatmapKey,
+                          int instancesAnalysed) {
         TriagePolicy.Score score = triage.score(result.predictions());
         String rawOutput = toJson(Map.of("modelVersion", result.model().version(),
-                "weightsSha256", result.model().weightsSha256()));
+                "weightsSha256", result.model().weightsSha256(),
+                "instanceId", instance.id().toString(), "instancesAnalysed", instancesAnalysed));
 
         tenantTx.runAs(orgId, () -> {
             UUID topPredictionId = null;
