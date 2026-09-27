@@ -170,7 +170,8 @@ def main():
             "dataset": "Foot Ulcer Segmentation Challenge 2021 (Wang et al.; published for research, no explicit "
                        "licence): diabetic foot ulcer photos with expert masks, AZH Wound and Vascular Center, USA",
             "caveat": "Research use only (licence unclear). Area is in pixels and depends on camera distance; "
-                      "patients may appear in both training and test photos; do not use for clinical decisions.",
+                      "patients may appear in both training and test photos; assumes a wound is present (outlines a "
+                      "small false area on most wound-free photos); do not use for clinical decisions.",
         },
     }, indent=2))
     print(f"saved to {out_dir}", flush=True)

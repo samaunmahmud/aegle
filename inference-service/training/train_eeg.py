@@ -29,15 +29,15 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from app.eeg import MONTAGE, UnsupportedEeg, read_edf, windows
-from app.models.eeg_seizure import META_FILE, MODEL_ID, WEIGHTS_FILE
+from app.models.eeg_seizure import META_FILE, MODEL_ID, WEIGHTS_FILE, alarm_events, alarm_score
 from app.models.resnet1d import ResNet1d
 from app.registry import default_model_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "dataset" / "chbmit"
-WINDOW, STRIDE, VERSION = 8.0, 4.0, "0.1.0"
+WINDOW, STRIDE, VERSION = 8.0, 4.0, "0.2.0"
 BACKGROUND_PER_FILE = 80
-THRESHOLD = 0.5
+MAX_FALSE_ALARMS_PER_HOUR = 2.0     # alarm rule is tuned on validation patients to stay under this
 
 
 def seizures() -> dict[Path, list[tuple[float, float]]]:
@@ -98,10 +98,9 @@ def probabilities(model, x, device):
     return np.concatenate(out)
 
 
-def continuous_evaluation(model, files, device) -> dict:
-    """Run over whole recordings as in use, with the served smoothing and threshold."""
-    ys, ps = [], []
-    detected, delays, false_alarms, hours, total_seizures = 0, [], 0, 0.0, 0
+def recording_probabilities(model, files, device) -> list[dict]:
+    """Smoothed per-window probabilities over whole recordings, as served."""
+    recs = []
     for path, spans in files:
         try:
             eeg = read_edf(path.read_bytes())
@@ -111,29 +110,28 @@ def continuous_evaluation(model, files, device) -> dict:
         p = probabilities(model, torch.from_numpy(x), device)
         p = np.convolve(np.pad(p, 1, mode="edge"), np.ones(3) / 3, mode="valid")
         y = np.array([overlap(s, s + WINDOW, spans) >= WINDOW / 2 for s in starts], dtype=float)
-        ys.append(y); ps.append(p)
-        hours += eeg.seconds / 3600
-        alarms = p >= THRESHOLD
-        # Alarm events: runs of consecutive positive windows.
-        events, run = [], None
-        for i, a in enumerate(alarms):
-            if a and run is None:
-                run = i
-            if (not a or i == len(alarms) - 1) and run is not None:
-                end = i if a else i - 1
-                events.append((starts[run], starts[end] + WINDOW))
-                run = None
-        for b0, b1 in spans:
+        recs.append({"p": p, "y": y, "starts": starts, "spans": spans, "hours": eeg.seconds / 3600})
+    return recs
+
+
+def continuous_evaluation(recs, threshold: float, min_windows: int) -> dict:
+    """Seizures detected, delay and false alarms with the served alarm rule."""
+    detected, delays, false_alarms, total_seizures = 0, [], 0, 0
+    for r in recs:
+        events = alarm_events(alarm_score(r["p"], threshold, min_windows), r["starts"], WINDOW)
+        for b0, b1 in r["spans"]:
             total_seizures += 1
             hits = [e0 for e0, e1 in events if e0 < b1 and e1 > b0]
             if hits:
                 detected += 1
-                delays.append(max(0.0, min(hits) + WINDOW - b0))    # alarm known at window end
-        false_alarms += sum(1 for e0, e1 in events if overlap(e0, e1, spans) == 0)
-    y, p = np.concatenate(ys), np.concatenate(ps)
-    pred = p >= THRESHOLD
+                delays.append(max(0.0, min(hits) + min_windows * STRIDE + WINDOW - STRIDE - b0))
+        false_alarms += sum(1 for e0, e1 in events if overlap(e0, e1, r["spans"]) == 0)
+    y = np.concatenate([r["y"] for r in recs])
+    p = np.concatenate([r["p"] for r in recs])
+    pred = np.concatenate([alarm_score(r["p"], threshold, min_windows) >= 0.5 for r in recs])
+    hours = sum(r["hours"] for r in recs)
     return {
-        "recordings": len(ys), "hours": round(hours, 1), "windows": int(len(y)), "seizures": total_seizures,
+        "recordings": len(recs), "hours": round(hours, 1), "windows": int(len(y)), "seizures": total_seizures,
         "window_auc": round(float(roc_auc_score(y, p)), 4) if 0 < y.sum() < len(y) else None,
         "window_sensitivity": round(float((pred & (y == 1)).sum() / max(1, (y == 1).sum())), 4),
         "window_specificity": round(float((~pred & (y == 0)).sum() / max(1, (y == 0).sum())), 4),
@@ -143,29 +141,77 @@ def continuous_evaluation(model, files, device) -> dict:
     }
 
 
+def tune_alarm(recs) -> tuple[float, int, dict]:
+    """On validation patients: the threshold and run length that detect the most seizures at no
+    more than MAX_FALSE_ALARMS_PER_HOUR (fewest false alarms on ties)."""
+    best = None
+    for k in (1, 2, 3, 4, 6):
+        for t in np.round(np.arange(0.50, 0.995, 0.01), 2):
+            m = continuous_evaluation(recs, float(t), k)
+            if m["false_alarms_per_hour"] > MAX_FALSE_ALARMS_PER_HOUR:
+                continue
+            key = (m["seizures_detected"], -m["false_alarms_per_hour"])
+            if best is None or key > best[0]:
+                best = (key, float(t), k, m)
+    if best is None:
+        raise SystemExit(f"no setting reaches {MAX_FALSE_ALARMS_PER_HOUR} false alarms/h on validation")
+    return best[1], best[2], best[3]
+
+
+def split_patients(seed: int, limit_files: int = 0):
+    rng = random.Random(seed)
+    by_patient: dict[str, list] = {}
+    for path, spans in seizures().items():
+        by_patient.setdefault(patient(path), []).append((path, spans))
+    if limit_files:
+        by_patient = {k: v[:limit_files] for k, v in by_patient.items()}
+    patients = sorted(by_patient)
+    rng.shuffle(patients)
+    n_test = max(1, round(len(patients) * 0.2))
+    test_p, val_p, train_p = patients[:n_test], patients[n_test:n_test + 3], patients[n_test + 3:]
+    files = lambda ps: [f for p in ps for f in by_patient[p]]  # noqa: E731
+    return rng, files, train_p, val_p, test_p
+
+
+def calibrate_and_test(model, files, val_p, test_p, device) -> tuple[float, int, dict, dict]:
+    threshold, min_windows, val = tune_alarm(recording_probabilities(model, files(val_p), device))
+    print(f"alarm rule from validation: threshold={threshold} min_windows={min_windows} {val}", flush=True)
+    test = continuous_evaluation(recording_probabilities(model, files(test_p), device), threshold, min_windows)
+    print("TEST (continuous, unseen patients):", json.dumps(test, indent=2), flush=True)
+    return threshold, min_windows, val, test
+
+
+def recalibrate(args, device):
+    """Re-tune the alarm rule of the saved model (no retraining) and re-test."""
+    _, files, _, val_p, test_p = split_patients(args.seed, args.limit_files)
+    out_dir = args.out or default_model_dir()
+    model = ResNet1d(1, leads=len(MONTAGE)).to(device)
+    model.load_state_dict(torch.load(out_dir / WEIGHTS_FILE, map_location="cpu", weights_only=True))
+    threshold, min_windows, val, test = calibrate_and_test(model, files, val_p, test_p, device)
+    meta = json.loads((out_dir / META_FILE).read_text())
+    meta.update(version=VERSION, threshold=threshold, min_windows=min_windows)
+    meta["metrics"].update(validation_alarm=val, test={"n": test["windows"], **test})
+    (out_dir / META_FILE).write_text(json.dumps(meta, indent=2))
+    print(f"updated {out_dir / META_FILE}", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--limit-files", type=int, default=0, help="per patient (smoke test)")
+    ap.add_argument("--recalibrate", action="store_true", help="re-tune the saved model's alarm rule only")
     args = ap.parse_args()
 
-    rng = random.Random(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
+    np.random.seed(args.seed); torch.manual_seed(args.seed)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    if args.recalibrate:
+        return recalibrate(args, device)
     out_dir = args.out or default_model_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    by_patient: dict[str, list] = {}
-    for path, spans in seizures().items():
-        by_patient.setdefault(patient(path), []).append((path, spans))
-    if args.limit_files:
-        by_patient = {k: v[: args.limit_files] for k, v in by_patient.items()}
-    patients = sorted(by_patient)
-    rng.shuffle(patients)
-    n_test = max(1, round(len(patients) * 0.2))
-    test_p, val_p, train_p = patients[:n_test], patients[n_test:n_test + 3], patients[n_test + 3:]
-    files = lambda ps: [f for p in ps for f in by_patient[p]]  # noqa: E731
+    rng, files, train_p, val_p, test_p = split_patients(args.seed, args.limit_files)
     print(f"{MODEL_ID}: device={device} patients train={train_p} val={val_p} test={test_p}", flush=True)
 
     x_train, y_train = sample(files(train_p), rng, seizure_stride=1.0)
@@ -201,21 +247,24 @@ def main():
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
     model.load_state_dict(best_state)
-    test = continuous_evaluation(model, files(test_p), device)
-    print("TEST (continuous, unseen patients):", json.dumps(test, indent=2), flush=True)
+    threshold, min_windows, val_alarm, test = calibrate_and_test(model, files, val_p, test_p, device)
 
     torch.save(best_state, out_dir / WEIGHTS_FILE)
     (out_dir / META_FILE).write_text(json.dumps({
         "model_id": MODEL_ID, "version": VERSION, "architecture": "resnet1d",
-        "window_seconds": WINDOW, "stride_seconds": STRIDE, "threshold": THRESHOLD,
+        "window_seconds": WINDOW, "stride_seconds": STRIDE, "threshold": threshold,
+        "min_windows": min_windows,
         "metrics": {
             "validation_window_auc": round(float(best), 4),
+            "validation_alarm": val_alarm,
             "test": {"n": test["windows"], **test},
             "split": {"test_patients": test_p, "validation_patients": val_p, "train_patients": len(train_p)},
             "dataset": "CHB-MIT Scalp EEG (Shoeb, 2009; ODC-BY 1.0): recordings with seizures from 23 "
                        "children with intractable epilepsy, Boston Children's Hospital",
             "caveat": "Paediatric, one centre, patients with intractable epilepsy; evaluated on recordings "
-                      "that contain seizures only; do not use for clinical decisions.",
+                      "that contain seizures only. With the alarm rule held to about 2 false alarms per hour "
+                      "it finds only about a third of seizures in unseen patients: it cannot rule seizures "
+                      "out; do not use for clinical decisions.",
         },
     }, indent=2))
     print(f"saved to {out_dir}", flush=True)

@@ -24,7 +24,9 @@ INTENDED_USE = (
     "and reports its area, to follow healing between visits. Area is in image pixels: it is only "
     "comparable between photos taken at the same distance and zoom (a ruler or calibration sticker "
     "is needed for mm2). It does not grade infection, depth or tissue type; trained on diabetic foot "
-    "ulcers from one US wound centre. The clinician measures and decides."
+    "ulcers from one US wound centre. It assumes a wound is in the photo: on 4 of 5 wound-free test "
+    "photos it still outlined a small area, so it cannot tell whether a wound is present. "
+    "The clinician measures and decides."
 )
 
 

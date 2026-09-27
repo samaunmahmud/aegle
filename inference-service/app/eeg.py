@@ -154,7 +154,8 @@ PAGE_S = 10.0
 
 
 def render(eeg: Eeg, page_start: float = 0.0, probabilities: np.ndarray | None = None,
-           window_starts: np.ndarray | None = None, window_seconds: float = 8.0) -> bytes:
+           window_starts: np.ndarray | None = None, window_seconds: float = 8.0,
+           label: str = "Seizure probability") -> bytes:
     """A 10 s page of the 18-channel montage (30 mm/s, 7 uV/mm) as PNG. With model output, a
     timeline across the whole recording is drawn on top and the page's windows are shaded."""
     page_start = float(np.clip(page_start, 0, max(0.0, eeg.seconds - PAGE_S)))
@@ -167,7 +168,7 @@ def render(eeg: Eeg, page_start: float = 0.0, probabilities: np.ndarray | None =
 
     # Timeline of the whole recording.
     d.rectangle([0, 0, W, TIMELINE_PX - 1], fill=(246, 248, 251))
-    d.text((6, 6), "Seizure probability" if probabilities is not None else "Not analysed", fill=(60, 60, 60))
+    d.text((6, 6), label if probabilities is not None else "Not analysed", fill=(60, 60, 60))
     tl = (x0, 22, W - 8, TIMELINE_PX - 10)
     d.rectangle(tl, outline=(200, 205, 212))
     if probabilities is not None and window_starts is not None and len(probabilities):

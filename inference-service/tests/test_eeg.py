@@ -85,3 +85,12 @@ def test_seizure_model_reports_a_recording_probability_and_timeline(client):
 def test_render_draws_edf(client):
     r = client.post("/v1/render", files={"file": ("x.edf", bipolar_edf())})
     assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+
+
+def test_alarm_needs_a_sustained_run():
+    p = np.array([.1, .9, .2, .8, .85, .9, .3])
+    score = eeg_seizure.alarm_score(p, threshold=0.8, k=2)
+    assert score[1] < 0.5                        # a single high window does not alarm
+    assert (score[3:6] >= 0.5).all() and score[6] < 0.5
+    assert eeg_seizure.alarm_events(score, np.arange(7) * 4.0, 8.0) == [(12.0, 28.0)]
+    assert np.array_equal(eeg_seizure.alarm_score(p, 0.5, 1) >= 0.5, p >= 0.5)
