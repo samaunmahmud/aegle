@@ -72,10 +72,11 @@ export const SPECIALTIES: SpecialtyInfo[] = [
     slug: "pathology",
     name: "Pathology",
     summary: "Blood smears and tissue biopsies",
-    planned: ["Leukaemia (ALL) on blood smears: C-NMC 2019 (CC BY 3.0) only downloads through IBM Aspera", "Tumour grading on biopsies: needs a graded dataset (e.g. prostate Gleason)"],
+    planned: ["Leukaemia (ALL) on blood smears: C-NMC 2019 (CC BY 3.0) only downloads through IBM Aspera", "Whole-slide Gleason score and grade group (patch-level patterns are available)"],
     presets: [
       { label: "Blood smear (cell)", modality: "SM", bodyPart: "BLOOD" },
-      { label: "Tissue biopsy (H&E tile)", modality: "SM", bodyPart: "TISSUE" },
+      { label: "Colorectal tissue (H&E tile)", modality: "SM", bodyPart: "TISSUE" },
+      { label: "Prostate biopsy (H&E patch)", modality: "SM", bodyPart: "PROSTATE" },
     ],
   },
   {
