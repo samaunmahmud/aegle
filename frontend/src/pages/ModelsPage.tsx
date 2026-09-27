@@ -20,6 +20,9 @@ const KEY_METRICS: { key: string; label: string; percent: boolean; plain?: boole
   { key: "sensitivity", label: "Sensitivity", percent: true },
   { key: "specificity", label: "Specificity", percent: true },
   { key: "ece", label: "Calib. error", percent: false },
+  { key: "dice", label: "Dice", percent: false },
+  { key: "iou", label: "IoU", percent: false },
+  { key: "area_within_20pct", label: "Area within 20%", percent: true },
 ];
 
 type Metrics = Record<string, unknown>;
@@ -76,7 +79,12 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
         <div className="model-card-results">
           {shown.length > 0 ? (
             <>
-              <div className="stat-label">Held-out test · {String(test?.["n"] ?? "?")} cases the model never saw</div>
+              <div className="stat-label">
+                Held-out test ·{" "}
+                {typeof test?.["recordings"] === "number"
+                  ? `${test["recordings"]} recordings (${test["hours"]} h) from patients the model never saw`
+                  : `${String(test?.["n"] ?? "?")} cases the model never saw`}
+              </div>
               <div className="metric-row">
                 {shown.map((k) => {
                   const v = test![k.key] as number;
