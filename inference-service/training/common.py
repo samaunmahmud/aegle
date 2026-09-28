@@ -18,6 +18,11 @@ model on image size, colour statistics and file size. If that baseline scores cl
 the real model, the classes probably differ in how images were acquired and the real
 score is not evidence the model sees disease. Colour can be genuine signal (stained
 parasites, for example), so read the baseline per dataset.
+
+Probabilities are temperature-scaled: the class-weighted loss inflates rare classes'
+probabilities, so one temperature is fitted on the validation set and applied at serving
+(argmax, hence accuracy, is unchanged). `--recalibrate` fits it for saved weights without
+retraining.
 """
 from __future__ import annotations
 
@@ -141,13 +146,31 @@ def transforms(task: Task):
 
 
 @torch.no_grad()
-def predict_all(model, loader, device):
+def predict_logits(model, loader, device):
     model.eval()
-    probs, labels = [], []
+    logits, labels = [], []
     for x, y in loader:
-        probs.append(torch.softmax(model(x.to(device)), dim=1).cpu().numpy())
+        logits.append(model(x.to(device)).float().cpu().numpy())
         labels.append(y.numpy())
-    return np.concatenate(probs), np.concatenate(labels)
+    return np.concatenate(logits), np.concatenate(labels)
+
+
+def softmax(z: np.ndarray, temperature: float = 1.0) -> np.ndarray:
+    z = z / temperature
+    e = np.exp(z - z.max(axis=1, keepdims=True))
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def predict_all(model, loader, device, temperature: float = 1.0):
+    z, y = predict_logits(model, loader, device)
+    return softmax(z, temperature), y
+
+
+def fit_temperature(z: np.ndarray, y: np.ndarray) -> float:
+    """The temperature minimising validation negative log-likelihood (grid over 0.25-8)."""
+    grid = np.exp(np.linspace(np.log(0.25), np.log(8.0), 400))
+    nll = [-np.log(softmax(z, t)[np.arange(len(y)), y] + 1e-12).mean() for t in grid]
+    return round(float(grid[int(np.argmin(nll))]), 4)
 
 
 def expected_calibration_error(p: np.ndarray, y: np.ndarray, bins: int = 15) -> float:
@@ -268,6 +291,38 @@ def attention_on_lesion(model, task: Task, rows, tf_eval, device) -> dict:
     return {"all": summary(task.labels), **{n: summary([n]) for n in task.labels}}
 
 
+def calibrated_test(model, task: Task, val_dl, test_dl, device) -> tuple[float, dict, dict]:
+    """Fit the temperature on validation; validation and test metrics with it applied."""
+    z_val, y_val = predict_logits(model, val_dl, device)
+    z_test, y_test = predict_logits(model, test_dl, device)
+    temperature = fit_temperature(z_val, y_val)
+    val = metrics(softmax(z_val, temperature), y_val, task.labels)
+    p_test = softmax(z_test, temperature)
+    test = metrics(p_test, y_test, task.labels)
+    test["ece_uncalibrated"] = round(expected_calibration_error(softmax(z_test), y_test), 4)
+    if task.ordinal:
+        test.update(ordinal_metrics(p_test, y_test, task.refer_from))
+    print(f"temperature={temperature} test ece {test['ece_uncalibrated']} -> {test['ece']}", flush=True)
+    return temperature, val, test
+
+
+def recalibrate(task: Task, out_dir: Path, val_dl, test_dl, device) -> dict:
+    """Fit the saved model's temperature (no retraining) and refresh its validation and test
+    metrics; the shortcut baseline and attention check are kept as recorded."""
+    meta_path = out_dir / task.meta_file
+    meta = json.loads(meta_path.read_text())
+    model = build_resnet18(len(task.labels), pretrained=False).to(device)
+    model.load_state_dict(torch.load(out_dir / task.weights_file, map_location="cpu", weights_only=True))
+    temperature, val, test = calibrated_test(model, task, val_dl, test_dl, device)
+    kept = {k: v for k, v in meta["metrics"].get("test", {}).items()
+            if k in ("shortcut_baseline", "attention_on_lesion")}
+    meta["temperature"] = temperature
+    meta["metrics"].update(validation=val, test={**test, **kept})
+    meta_path.write_text(json.dumps(meta, indent=2))
+    print(f"updated {meta_path}", flush=True)
+    return test
+
+
 def run(task: Task, argv=None) -> dict:
     ap = argparse.ArgumentParser(description=f"Train {task.model_id}")
     ap.add_argument("--out", type=Path, default=None)
@@ -277,6 +332,7 @@ def run(task: Task, argv=None) -> dict:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--limit", type=int, default=0, help="use only N images per class per split (smoke test)")
+    ap.add_argument("--recalibrate", action="store_true", help="fit the saved model's temperature only")
     args = ap.parse_args(argv)
 
     random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
@@ -301,6 +357,8 @@ def run(task: Task, argv=None) -> dict:
     dl = lambda rows, tf, shuffle: DataLoader(  # noqa: E731
         ImageRows(task, rows, tf), batch_size=task.batch_size, shuffle=shuffle,
         num_workers=args.workers, persistent_workers=args.workers > 0)
+    if args.recalibrate:
+        return recalibrate(task, out_dir, dl(val_rows, tf_eval, False), dl(test_rows, tf_eval, False), device)
     train_dl, val_dl, test_dl = dl(train_rows, tf_train, True), dl(val_rows, tf_eval, False), dl(test_rows, tf_eval, False)
 
     model = build_resnet18(len(task.labels), pretrained=True).to(device)
@@ -330,17 +388,14 @@ def run(task: Task, argv=None) -> dict:
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
     model.load_state_dict(best_state)
-    p_test, y_test = predict_all(model, test_dl, device)
-    test = metrics(p_test, y_test, task.labels)
-    if task.ordinal:
-        test.update(ordinal_metrics(p_test, y_test, task.refer_from))
+    temperature, best_val, test = calibrated_test(model, task, val_dl, test_dl, device)
     if test_rows and test_rows[0].get("mask"):
         test["attention_on_lesion"] = attention_on_lesion(model, task, test_rows, tf_eval, device)
     test["shortcut_baseline"] = shortcut_baseline(task, train_rows, test_rows)
     print("TEST (best-val checkpoint):", json.dumps(test, indent=2), flush=True)
     external = None
     if external_rows:
-        external = metrics(*predict_all(model, dl(external_rows, tf_eval, False), device), task.labels)
+        external = metrics(*predict_all(model, dl(external_rows, tf_eval, False), device, temperature), task.labels)
         print("EXTERNAL TEST:", json.dumps(external, indent=2), flush=True)
 
     torch.save(best_state, out_dir / task.weights_file)
@@ -352,6 +407,7 @@ def run(task: Task, argv=None) -> dict:
         "input_size": task.input_size,
         "mean": IMAGENET_MEAN,
         "std": IMAGENET_STD,
+        "temperature": temperature,
         **({"mask_regions": task.mask_regions} if task.mask_regions else {}),
         **({"crop_fundus": True} if task.crop_fundus else {}),
         "metrics": {

@@ -46,16 +46,13 @@ def post(model_id: str, data: bytes, token: str) -> dict:
 
 def image_cases(model_id: str) -> list[tuple[Path, str]]:
     """Held-out (file, true label) pairs, from the same split the training script used."""
-    if model_id == "chest-xray-pneumonia":
-        from . import train_pneumonia as tp
-        return [(p, tp.LABELS[y]) for p, y, _ in tp.scan(DS / "chest_xray" / "test")]
     if model_id == "brain-mri-tumor-type":
         from . import train_brain_tumor as tb
         d = DS / "brain_tumor_figshare"
         _, _, test = tb.split_by_patient(tb.load_index(d), 0.15, 0.15, 42)
         return [(d / r["file"], r["label"]) for r in test]
     from .common import load_index, split
-    trainers = {"blood-smear-malaria": "train_malaria", "fundus-diabetic-retinopathy": "train_retinopathy",
+    trainers = {"chest-xray-pneumonia": "train_pneumonia", "blood-smear-malaria": "train_malaria", "fundus-diabetic-retinopathy": "train_retinopathy",
                 "skin-lesion-dermoscopy": "train_dermatology", "colonoscopy-findings": "train_gastro",
                 "colorectal-tissue-he": "train_tissue",
                 "prostate-gleason-pattern": "train_gleason"}

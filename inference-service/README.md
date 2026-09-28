@@ -17,37 +17,50 @@ python3.11 -m venv .venv
 Needs the Kaggle dataset under `../dataset/chest_xray/`.
 
 ```bash
+.venv/bin/python -m training.prepare_pneumonia   # index.csv: patient ids and splits
 .venv/bin/python -m training.train_pneumonia
 ```
 
 Writes `../saved-model/pneumonia-resnet18.pt` and `.json` (weights plus
-metadata including test metrics). Validation is split **by patient**, because
-many patients have several images and an image-level split would leak.
+metadata including test metrics). Kaggle's test folder is the test set.
+Validation is split **by patient** from the training folder, because many
+patients have several images and an image-level split would leak. Kaggle's own
+split is not by patient: 170 children have films in both train and test, and
+are left out of training.
 
-### Model #1 results and known limitations (v0.1.0)
+### Model #1 results and known limitations (v0.2.0)
 
-Held-out Kaggle test set (624 images, threshold 0.5):
+Held-out Kaggle test set (624 images, 427 children; most likely label):
 
-| AUC | Sensitivity | Specificity | Accuracy | False positives |
-|---|---|---|---|---|
-| 0.968 | 0.990 | 0.667 | 0.869 | 78 of 234 normals |
+| Version | AUC | Sensitivity | Specificity | Balanced accuracy | False positives |
+|---|---|---|---|---|---|
+| v0.1.0 | 0.968 | 0.990 | 0.667 | 0.828 | 78 of 234 normals |
+| v0.2.0 | 0.974 | 0.997 | 0.727 | 0.862 | 64 of 234 normals |
+
+v0.2.0 uses the shared training (`training/common.py`), drops horizontal flips
+(a mirrored chest film puts the heart on the right) and no longer trains on
+children who are in the test set. A trivial model on image size and colour
+scores AUC 0.52 on the same test set, so the result does not rest on how the
+films were taken.
 
 Treat this as a research prototype, not a usable clinical model:
 
-- **Validation is not trustworthy.** Patient-level validation AUC was 0.999
-  with 100% specificity, far above test performance. The train and validation
-  images come from the same source, and normal and pneumonia images in this
-  dataset differ in ways unrelated to disease (scanner, positioning, markers).
-- **Grad-CAM shows shortcut learning.** On one confidently-predicted pneumonia
-  case the strongest activation was in the image corner, outside the body.
-  Heatmaps must be shown to clinicians as an aid, never as proof of the finding.
-- **Low specificity.** It over-calls pneumonia (a third of normal test images
+- **Validation is not trustworthy.** Patient-level validation balanced accuracy
+  is 99.8%, far above test. Kaggle's test films were drawn separately and
+  differ from its training films; validation cannot see that shift.
+- **Low specificity.** It over-calls pneumonia (a quarter of normal test images
   flagged), which would flood a triage worklist.
+- **Calibration does not transfer.** The temperature fitted on validation is
+  about 1, so probabilities stay overconfident on the test films (calibration
+  error 0.084).
+- **Grad-CAM showed shortcut learning in v0.1.** On one confidently-predicted
+  pneumonia case the strongest activation was in the image corner, outside the
+  body. Heatmaps must be shown to clinicians as an aid, never as proof.
 - **Pediatric, single-centre data.** No adult or external validation.
 
 Next steps for this model: adult multi-centre data (CheXpert, NIH ChestX-ray14,
 MIMIC-CXR), lung segmentation or cropping before classification to remove
-border and marker cues, probability calibration, and external validation.
+border and marker cues, and external validation.
 
 ## Train model #2 (brain MRI tumour type)
 

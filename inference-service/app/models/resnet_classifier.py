@@ -44,6 +44,8 @@ class ResNetClassifier(ModelAdapter):
         self._std = torch.tensor(meta["std"]).view(1, 3, 1, 1)
         self._mask_regions = meta.get("mask_regions", [])
         self._crop_fundus = meta.get("crop_fundus", False)
+        # Fitted on validation (training/common.py); 1.0 for models trained before calibration.
+        self._temperature: float = meta.get("temperature", 1.0)
 
         self._net = build_resnet18(len(self._labels), pretrained=False)
         # weights_only=True: never unpickle arbitrary objects from a weights file.
@@ -79,7 +81,7 @@ class ResNetClassifier(ModelAdapter):
     def predict(self, image: Image.Image, explain: bool = True) -> PredictionOutput:
         x = self._preprocess(image)
         with torch.no_grad():
-            probs = torch.softmax(self._net(x), dim=1)[0].tolist()
+            probs = torch.softmax(self._net(x) / self._temperature, dim=1)[0].tolist()
         preds = sorted(
             (Prediction(label=l, probability=round(p, 6)) for l, p in zip(self._labels, probs)),
             key=lambda p: p.probability,
