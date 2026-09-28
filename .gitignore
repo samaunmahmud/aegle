@@ -12,6 +12,7 @@ __pycache__/
 .vscode/
 *.iml
 .DS_Store
+._*
 
 # Medical data and model artifacts: never commit patient/imaging data or weights
 dataset/
