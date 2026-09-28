@@ -12,7 +12,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-REPO = Path("/Users/samaunmahmud/Documents/Medical  image detector")
+REPO = Path(__file__).resolve().parents[2]
 DS = REPO / "dataset"
 sys.path.insert(0, str(REPO / "inference-service"))
 
