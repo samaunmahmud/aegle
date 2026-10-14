@@ -3,6 +3,10 @@
     cd inference-service
     python -m training.prepare_dermatology
     python -m training.train_dermatology
+
+v0.2 over v0.1: images at 448 px instead of shrunk to 224 (the photos are 600x450), so
+the fine network and dot patterns that separate melanoma and keratoses stay visible;
+and calibrated probabilities.
 """
 from app.models.skin_lesion import META_FILE, MODEL_ID, WEIGHTS_FILE
 
@@ -20,6 +24,9 @@ TASK = Task(
             "the ISIC 2018 Task 3 test set (1,512 images)",
     caveat="Licence forbids commercial use. Mostly fair-skinned European and Australian patients; "
            "dermoscopy only; not validated prospectively; do not use for clinical decisions.",
+    version="0.2.0",
+    input_size=448,
+    batch_size=16,
     epochs=15,
     vflip=True,          # dermoscopy has no fixed orientation
     rotation=180,
