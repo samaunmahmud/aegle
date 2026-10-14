@@ -11,8 +11,13 @@ AZH Wound and Vascular Center, Milwaukee. Put the repository's
 The challenge's own validation set (200 images) is the held-out test here; its test masks
 are not public. Training images are split into train/validation after grouping near-duplicate
 photos (patients were photographed at several visits and no patient ids are given).
+Seven validation photos are pixel-identical to training photos (annotated twice); those
+training copies are dropped so the test set is unseen.
 Reported: Dice and IoU against the expert outline, and the error of the measured area,
 which is what a clinician would follow over visits.
+
+v0.2 over v0.1: the photos at their full 512 px instead of shrunk to 256, so the thin edges
+of small ulcers stay visible; and no test photos in training.
 """
 from __future__ import annotations
 
@@ -33,11 +38,11 @@ from app.models.unet import UNetResNet18
 from app.models.wound import META_FILE, MODEL_ID, WEIGHTS_FILE
 from app.registry import default_model_dir
 
-from .dedupe import near_duplicate_groups
+from .dedupe import dhash, near_duplicate_groups
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "dataset" / "fuseg" / "challenge"
-SIZE, VERSION = 256, "0.1.0"
+SIZE, VERSION = 512, "0.2.0"
 MEAN = np.array(IMAGENET_MEAN, dtype=np.float32)
 STD = np.array(IMAGENET_STD, dtype=np.float32)
 
@@ -120,6 +125,9 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     train_all, test = pairs("train"), pairs("validation")
+    test_hashes = np.stack([dhash(p) for p, _ in test])
+    in_test = [bool(((test_hashes != dhash(p)).sum(axis=1) <= 20).any()) for p, _ in train_all]
+    train_all = [it for it, dup in zip(train_all, in_test) if not dup]
     groups = near_duplicate_groups([p for p, _ in train_all])
     distinct = sorted(set(groups))
     random.Random(args.seed).shuffle(distinct)
@@ -129,9 +137,10 @@ def main():
     if args.limit:
         train, val, test = train[: args.limit], val[: args.limit // 4 + 1], test[: args.limit // 4 + 1]
     print(f"{MODEL_ID}: device={device} images train={len(train)} val={len(val)} test={len(test)} "
-          f"({len(distinct)} near-duplicate groups in training data)", flush=True)
+          f"({len(distinct)} near-duplicate groups in training data; {sum(in_test)} training photos "
+          f"dropped as duplicates of test photos)", flush=True)
 
-    loader = DataLoader(WoundDataset(train, True), batch_size=16, shuffle=True, num_workers=4, persistent_workers=True)
+    loader = DataLoader(WoundDataset(train, True), batch_size=8, shuffle=True, num_workers=4, persistent_workers=True)
     model = UNetResNet18(pretrained=True).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
@@ -167,10 +176,12 @@ def main():
         "metrics": {
             "validation": best_val,
             "test": test_m,
+            "split": {"seed": args.seed, "images_train_val_test": [len(train), len(val), len(test)],
+                      "train_dropped_as_test_duplicates": sum(in_test)},
             "dataset": "Foot Ulcer Segmentation Challenge 2021 (Wang et al.; published for research, no explicit "
                        "licence): diabetic foot ulcer photos with expert masks, AZH Wound and Vascular Center, USA",
             "caveat": "Research use only (licence unclear). Area is in pixels and depends on camera distance; "
-                      "patients may appear in both training and test photos; assumes a wound is present (outlines a "
+                      "no patient ids are given, so other visits of test patients may be in training; assumes a wound is present (outlines a "
                       "small false area on most wound-free photos); do not use for clinical decisions.",
         },
     }, indent=2))
