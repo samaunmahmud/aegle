@@ -168,7 +168,10 @@ def render(eeg: Eeg, page_start: float = 0.0, probabilities: np.ndarray | None =
 
     # Timeline of the whole recording.
     d.rectangle([0, 0, W, TIMELINE_PX - 1], fill=(246, 248, 251))
-    d.text((6, 6), label if probabilities is not None else "Not analysed", fill=(60, 60, 60))
+    # Without model output this is the plain recording view; the study page shows the analysis
+    # separately ("AI view"), so say where it is rather than suggest it never ran.
+    d.text((6, 6), label if probabilities is not None else "Recording, first 10 s (analysis: see AI view)",
+           fill=(60, 60, 60))
     tl = (x0, 22, W - 8, TIMELINE_PX - 10)
     d.rectangle(tl, outline=(200, 205, 212))
     if probabilities is not None and window_starts is not None and len(probabilities):
