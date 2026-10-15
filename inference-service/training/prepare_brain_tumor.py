@@ -6,7 +6,7 @@
 Reads <repo>/dataset/brain_tumor_figshare/raw/mat/*.mat (unzip the four
 brainTumorDataPublic_*.zip files there) and writes images/<n>.png, the expert tumour
 outline as masks/<n>.png (used to check where the model looks), and index.csv
-(file, mask, label, patient) next to raw/. Intensities are scaled exactly as the service
+(file, mask, label, group = patient id) next to raw/. Intensities are scaled exactly as the service
 scales a DICOM without window settings (app.imaging._to_uint8), so the model sees
 the same kind of input in training and in use.
 """
@@ -49,13 +49,13 @@ def main():
         image, mask, label, pid = read_mat(p)
         Image.fromarray(_to_uint8(image, None, None)).save(args.data / "images" / f"{p.stem}.png")
         Image.fromarray(mask.astype(np.uint8) * 255).save(args.data / "masks" / f"{p.stem}.png")
-        rows.append({"file": f"images/{p.stem}.png", "mask": f"masks/{p.stem}.png", "label": label, "patient": pid})
+        rows.append({"file": f"images/{p.stem}.png", "mask": f"masks/{p.stem}.png", "label": label, "group": pid})
     with open(args.data / "index.csv", "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["file", "mask", "label", "patient"])
+        w = csv.DictWriter(f, fieldnames=["file", "mask", "label", "group"])
         w.writeheader()
         w.writerows(rows)
     by_label = {l: sum(r["label"] == l for r in rows) for l in LABELS.values()}
-    print(f"{len(rows)} images, {len({r['patient'] for r in rows})} patients, {by_label}")
+    print(f"{len(rows)} images, {len({r['group'] for r in rows})} patients, {by_label}")
 
 
 if __name__ == "__main__":

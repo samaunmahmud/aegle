@@ -77,30 +77,34 @@ unzip them into `../dataset/brain_tumor_figshare/raw/mat/`, then:
 
 Train, validation and test are split by patient (165/34/34).
 
-### Model #2 results and known limitations (v0.1.0)
+### Model #2 results and known limitations (v0.2.0)
 
-Held-out test patients (34 patients, 457 slices):
+Held-out test patients (34 patients, 457 slices; the same patients as v0.1):
 
 | Accuracy | Balanced accuracy | Macro AUC | Calibration error (ECE) |
 |---|---|---|---|
-| 0.919 | 0.936 | 0.988 | 0.068 |
+| 0.928 | 0.934 | 0.992 | 0.019 |
 
 | True type | Slices | Sensitivity | Precision |
 |---|---|---|---|
-| Meningioma | 104 | 1.000 | 0.748 |
-| Glioma | 227 | 0.872 | 0.990 |
-| Pituitary | 126 | 0.937 | 1.000 |
+| Meningioma | 104 | 0.962 | 0.794 |
+| Glioma | 227 | 0.912 | 0.981 |
+| Pituitary | 126 | 0.929 | 0.975 |
+
+v0.2 trains on the slices at their full 512 px (v0.1 shrank them to 224) and fits a
+temperature on validation, which cut the calibration error from 0.068 to 0.019; balanced
+accuracy is unchanged (0.936 in v0.1).
 
 - **It does not detect tumours.** Every training slice contains one, so on a scan
   without a tumour it still names a type, confidently. Only use it on slices a
   radiologist has already identified as showing a tumour.
 - **It mostly looks at context, not the tumour.** Using the expert outlines, only
-  5% of Grad-CAM attention falls on the tumour (which covers 2% of the slice), and
-  the heatmap's peak is within 7 mm of the tumour in 36% of slices (16% for
-  pituitary). The dataset mixes axial, coronal and sagittal slices, and plane and
+  8% of Grad-CAM attention falls on the tumour (which covers 2% of the slice; v0.1: 5%),
+  and the heatmap's peak is within 7 mm of the tumour in 51% of slices (89% for
+  meningioma, 29% for pituitary). The dataset mixes axial, coronal and sagittal slices, and plane and
   anatomy correlate with tumour type; the model appears to use them. Expect it to
   fail on other hospitals' protocols.
-- **The costly error is glioma called meningioma** (29 of 227 glioma slices).
+- **The costly error is glioma called meningioma** (20 of 227 glioma slices; v0.1: 29).
 - **Two hospitals, 2005-2010, one sequence.** No external validation.
 
 Next steps: tumour-centred crops or segmentation-guided training so the classifier
