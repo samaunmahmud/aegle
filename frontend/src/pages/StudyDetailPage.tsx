@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { PredictionView, ReviewDecision, StudyDetail } from "../api/types";
+import type { PredictionView, ReviewDecision, StudyDetail, StudySummary } from "../api/types";
 import { AiTag, PriorityTag, StatusBadge } from "../components/Badges";
 import { Icon, SpecialtyIcon } from "../components/Icons";
 import { ImageViewer } from "../components/ImageViewer";
+import { PipelineSteps } from "../components/PipelineSteps";
+import { PriorityBreakdown } from "../components/PriorityExplain";
 import { formatValue, MEASUREMENTS, MeasurementTrend, measurementTitle } from "../components/MeasurementTrend";
 import { age, clinicalDate, clinicalDateTime, patientName, probability, titleCase } from "../format";
 import { specialtyById } from "../specialties";
@@ -17,30 +19,89 @@ export function StudyDetailPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [priors, setPriors] = useState<StudySummary[]>([]);
+  const [prior, setPrior] = useState<{ study: StudySummary; image: string; heatmap: string | null } | null>(null);
 
   useEffect(() => {
     if (!id) return;
     const revoke: string[] = [];
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let heatmapLoaded = false;
 
-    api
-      .study(id)
-      .then(async (d) => {
+    // A study opened straight after upload is still in the AI pipeline: follow it until it
+    // is ready (or fails), then fetch the explanation, so findings appear without a reload.
+    async function poll(first: boolean) {
+      try {
+        const d = await api.study(id!);
+        if (cancelled) return;
         setDetail(d);
-        const img = await api.studyImage(id);
-        const url = URL.createObjectURL(img);
-        revoke.push(url);
-        setImageUrl(url);
-        if (d.hasHeatmap) {
-          const hm = await api.studyHeatmap(id);
-          const hmUrl = URL.createObjectURL(hm);
-          revoke.push(hmUrl);
-          setHeatmapUrl(hmUrl);
+        if (first) {
+          const url = URL.createObjectURL(await api.studyImage(id!));
+          revoke.push(url);
+          if (!cancelled) setImageUrl(url);
         }
-      })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load study"));
+        if (d.hasHeatmap && !heatmapLoaded) {
+          heatmapLoaded = true;
+          const hmUrl = URL.createObjectURL(await api.studyHeatmap(id!));
+          revoke.push(hmUrl);
+          if (!cancelled) setHeatmapUrl(hmUrl);
+        }
+        if (["QUEUED", "ANALYZING"].includes(d.study.status)) timer = setTimeout(() => poll(false), 1200);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : "Failed to load study");
+      }
+    }
+    poll(true);
 
-    return () => revoke.forEach((u) => URL.revokeObjectURL(u));
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      revoke.forEach((u) => URL.revokeObjectURL(u));
+    };
   }, [id]);
+
+  // Earlier studies of the same examination for this patient, newest first. Only the list is
+  // fetched here; a prior's image loads (and is audited) when the clinician asks for it.
+  const mrn = detail?.patient.mrn;
+  const examKey = detail ? `${detail.study.modality}/${detail.study.bodyPart}` : null;
+  const specialtyId = detail?.study.specialty;
+  useEffect(() => {
+    setPrior(null);
+    if (!mrn || !examKey || !specialtyId) return;
+    api
+      .studies()
+      .then((all) =>
+        setPriors(
+          all
+            .filter((s) => s.patientMrn === mrn && s.id !== id && `${s.modality}/${s.bodyPart}` === examKey)
+            .sort((a, b) => Date.parse(b.studyDate ?? b.createdAt) - Date.parse(a.studyDate ?? a.createdAt))
+            .map((s) => ({ ...s, status: s.status as StudySummary["status"], source: "UPLOAD" as const, specialty: specialtyId })),
+        ),
+      )
+      .catch(() => setPriors([]));
+  }, [mrn, examKey, specialtyId, id]);
+
+  useEffect(
+    () => () => {
+      if (prior) {
+        URL.revokeObjectURL(prior.image);
+        if (prior.heatmap) URL.revokeObjectURL(prior.heatmap);
+      }
+    },
+    [prior],
+  );
+
+  async function openPrior(p: StudySummary) {
+    try {
+      const d = await api.study(p.id);
+      const image = URL.createObjectURL(await api.studyImage(p.id));
+      const heatmap = d.hasHeatmap ? URL.createObjectURL(await api.studyHeatmap(p.id)) : null;
+      setPrior({ study: d.study, image, heatmap });
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not open the prior study");
+    }
+  }
 
   if (error) return <p className="error-text">{error}</p>;
   if (!detail || !id) return <div className="panel empty-state">Loading study…</div>;
@@ -105,8 +166,44 @@ export function StudyDetailPage() {
         <StatusBadge status={study.status} />
       </section>
 
-      <div className="reading-room">
-        <ImageViewer
+      <PipelineSteps status={study.status} since={study.createdAt} noModel={study.status === "RECEIVED" && detail.jobs.length === 0} />
+
+      {priors.length > 0 && (
+        <div className="priors" aria-label="Prior studies">
+          <span className="priors-title">
+            {priors.length} prior {study.modality} {titleCase(study.bodyPart)} {priors.length === 1 ? "study" : "studies"}
+          </span>
+          {priors.slice(0, 6).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`prior-chip${prior?.study.id === p.id ? " on" : ""}`}
+              onClick={() => (prior?.study.id === p.id ? setPrior(null) : openPrior(p))}
+              aria-pressed={prior?.study.id === p.id}
+            >
+              {clinicalDate(p.studyDate ?? p.createdAt)}
+              <span>{prior?.study.id === p.id ? "Close comparison" : "Compare"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className={`reading-room${prior ? " comparing" : ""}`}>
+        {prior && (
+          <div className="compare-pane">
+            <div className="compare-label">Prior · {clinicalDate(prior.study.studyDate ?? prior.study.createdAt)}</div>
+            <ImageViewer
+              imageUrl={prior.image}
+              heatmapUrl={prior.heatmap}
+              recording={recording}
+              aiViewLabel="AI overlay"
+              corners={{ topLeft: ["PRIOR", `MRN ${patient.mrn}`], topRight: [clinicalDate(prior.study.studyDate ?? prior.study.createdAt)] }}
+            />
+          </div>
+        )}
+        <div className="compare-pane">
+          {prior && <div className="compare-label compare-current">Current · {examDate}</div>}
+          <ImageViewer
           imageUrl={imageUrl}
           heatmapUrl={heatmapUrl}
           recording={recording}
@@ -115,7 +212,8 @@ export function StudyDetailPage() {
             topLeft: [patientName(patient.name) ?? patient.mrn, `MRN ${patient.mrn}`, patient.dob ? `DOB ${clinicalDate(patient.dob)}` : ""].filter(Boolean),
             topRight: [`${study.modality} ${study.bodyPart}`, examDate, study.accessionNo ? `ACC ${study.accessionNo}` : ""].filter(Boolean),
           }}
-        />
+          />
+        </div>
 
         <aside className="findings-pane" aria-label="AI findings and review">
           <div className="pane-head">
@@ -127,13 +225,24 @@ export function StudyDetailPage() {
 
           {byModel.length === 0 ? (
             <div className="pane-empty">
-              {study.status === "RECEIVED" ? "No AI model is deployed for this examination." : "AI analysis in progress…"}
+              {study.status === "RECEIVED" ? (
+                "No AI model is deployed for this examination."
+              ) : study.status === "FAILED" ? (
+                "AI analysis failed; read the study without it."
+              ) : (
+                <div className="analysing">
+                  <span className="spinner" aria-hidden="true" /> AI analysing this study…
+                  <div className="skeleton" />
+                  <div className="skeleton short" />
+                </div>
+              )}
             </div>
           ) : (
             byModel.map((outputs) => (
               <ModelFinding
                 key={outputs[0].id}
                 outputs={outputs}
+                priority={outputs[0].id === byModel[0][0].id ? detail.priority : undefined}
                 alreadyReviewed={reviewedIds.has(outputs[0].id)}
                 onReviewed={() => api.study(id).then(setDetail)}
               />
@@ -211,10 +320,12 @@ export function StudyDetailPage() {
 
 function ModelFinding({
   outputs,
+  priority,
   alreadyReviewed,
   onReviewed,
 }: {
   outputs: PredictionView[];
+  priority?: unknown;
   alreadyReviewed: boolean;
   onReviewed: () => void;
 }) {
@@ -276,6 +387,12 @@ function ModelFinding({
             </li>
           ))}
         </ul>
+      )}
+      {priority != null && (
+        <details className="why-priority">
+          <summary>Why this priority?</summary>
+          <PriorityBreakdown reason={priority} />
+        </details>
       )}
       <details className="intended-use">
         <summary>What this model can and cannot do</summary>

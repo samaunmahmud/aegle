@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { clinicalDay, clock } from "../format";
+import { CommandPalette } from "./CommandPalette";
+import { CriticalBell, DepartmentSummaryProvider } from "./DepartmentSummary";
 import { Icon } from "./Icons";
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -96,6 +98,7 @@ export function Layout() {
   }, []);
 
   return (
+    <DepartmentSummaryProvider enabled={clinician}>
     <div className="app-shell">
       <header className="appbar">
         <div className="appbar-brand">
@@ -110,6 +113,14 @@ export function Layout() {
           <div className="site-dept">Imaging &amp; Diagnostics</div>
         </div>
         {clinician && <PatientSearch />}
+        <button
+          type="button"
+          className="cmdk-button"
+          onClick={() => window.dispatchEvent(new Event("aegle:command-palette"))}
+          title="Command palette"
+        >
+          <Icon.Command /> <kbd>⌘K</kbd>
+        </button>
         <div className="appbar-spacer" />
         <span
           className="env-chip"
@@ -117,6 +128,7 @@ export function Layout() {
         >
           Research prototype
         </span>
+        {clinician && <CriticalBell />}
         <Clock />
         <div className="appbar-user">
           <div className="avatar" aria-hidden="true">
@@ -170,6 +182,8 @@ export function Layout() {
           <span>All access is audited.</span>
         </footer>
       </div>
+      <CommandPalette />
     </div>
+    </DepartmentSummaryProvider>
   );
 }

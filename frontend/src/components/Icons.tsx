@@ -32,6 +32,23 @@ export const Icon = {
       <path d="M8.5 16h4l1.6-3.4 2.8 6.8 1.6-3.4h5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  Bell: () => (
+    <Svg>
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </Svg>
+  ),
+  Command: () => (
+    <Svg size={16}>
+      <path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" />
+    </Svg>
+  ),
+  Info: () => (
+    <Svg size={14}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6M12 7.5h.01" />
+    </Svg>
+  ),
   Search: () => (
     <Svg size={16}>
       <circle cx="11" cy="11" r="7" />

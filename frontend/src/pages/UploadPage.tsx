@@ -8,6 +8,11 @@ import { SPECIALTIES, type SpecialtyInfo, type StudyPreset } from "../specialtie
 
 type Choice = { specialty: SpecialtyInfo; preset: StudyPreset };
 
+function fileKind(f: File) {
+  const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
+  return { dcm: "DICOM", edf: "EDF (EEG)", csv: "ECG CSV", tif: "TIFF", tiff: "TIFF", png: "PNG", jpg: "JPEG", jpeg: "JPEG" }[ext] ?? (ext.toUpperCase() || "File");
+}
+
 export function UploadPage() {
   const navigate = useNavigate();
   const [choice, setChoice] = useState<Choice>({ specialty: SPECIALTIES[0], preset: SPECIALTIES[0].presets[0] });
@@ -21,6 +26,22 @@ export function UploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<ModelEntry[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  // A local preview of the clinician's own file (browsers show PNG and JPEG only). EEG and
+  // ECG exports also tell us the study type, so the matching preset is selected for them.
+  function pick(f: File | null) {
+    setFile(f);
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return f && /^image\/(png|jpeg)$/.test(f.type) ? URL.createObjectURL(f) : null;
+    });
+    const ext = f?.name.split(".").pop()?.toLowerCase();
+    const modality = ext === "edf" ? "EEG" : ext === "csv" ? "ECG" : null;
+    const match = modality && SPECIALTIES.flatMap((sp) => sp.presets.map((p) => ({ specialty: sp, preset: p }))).find((c) => c.preset.modality === modality);
+    if (match) setChoice(match);
+  }
 
   useEffect(() => {
     api.models().then(setModels).catch(() => setModels([]));
@@ -115,17 +136,41 @@ export function UploadPage() {
         <div className="form-section-title">
           2 · {["ECG", "EEG"].includes(choice.preset.modality) ? "Recording" : "Image"}
         </div>
-        <label>
-          <span>
-            {{ ECG: "ECG file", EEG: "EEG file" }[choice.preset.modality] ?? "Image file"}{" "}
-            <span className="required">*</span>
-          </span>
+        <label
+          className={`dropzone${dragging ? " dragging" : ""}${file ? " has-file" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            pick(e.dataTransfer.files?.[0] ?? null);
+          }}
+        >
           <input
             type="file"
+            className="visually-hidden"
             accept="image/png,image/jpeg,image/tiff,.tif,.tiff,.dcm,application/dicom,.csv,text/csv,.edf"
-            required
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => pick(e.target.files?.[0] ?? null)}
           />
+          {file ? (
+            <div className="drop-file">
+              {preview ? <img src={preview} alt="Preview of the selected image" /> : <div className="drop-filetype">{fileKind(file)}</div>}
+              <div>
+                <div className="cell-primary">{fileKind(file)} · {(file.size / 1024 / 1024).toFixed(1)} MB</div>
+                <div className="cell-secondary">Ready to send. Click or drop to replace.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="drop-empty">
+              <Icon.Upload />
+              <div className="cell-primary">
+                Drop the {{ ECG: "ECG file", EEG: "EEG recording" }[choice.preset.modality] ?? "image"} here, or click to choose
+              </div>
+            </div>
+          )}
           <span className="cell-secondary">
             {choice.preset.modality === "ECG"
               ? "DICOM 12-lead ECG, or a CSV with a header row of lead names (I, II, III, aVR, aVL, aVF, V1–V6) and optional “# fs=500 units=mV” line."

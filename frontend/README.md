@@ -30,6 +30,21 @@ Modelled on hospital systems (EHR, RIS/PACS) rather than a SaaS dashboard:
   data, and the app never loads a patient's image the clinician has not opened: every
   image view is written to the audit log. `npx vite-node scripts/render-art.tsx`
   regenerates the sign-in artwork from the same components.
+- **Live AI pipeline**: a study opened after upload (drag and drop onto the form) shows
+  Received → Queued → AI analysing → Ready with a running clock, and its findings and
+  heatmap appear as soon as the model finishes, without a reload.
+- **Critical results**: one shared poll of the department summary (reads are audited, so
+  pages share it) feeds the bell, the tab title (`(6) Aegle`) and alerts for new P1
+  findings, which stay until acknowledged.
+- **Explainable triage**: "Why this priority?" shows the stored breakdown, each label's
+  probability × urgency weight plus the waiting bonus, so a clinician can see, and
+  question, why a case sits where it does.
+- **Model evidence**: each model card opens its held-out confusion matrix, per-class
+  sensitivity/precision and the gap above the image-statistics shortcut baseline.
+- **Prior comparison**: earlier studies of the same examination open side by side; their
+  images load only when asked for, since each view is audited.
+- **Command palette** (`⌘K` / `Ctrl+K`): jump to any page or department, or find a
+  patient by MRN.
 - **Strict CSP kept**: fonts (IBM Plex) are bundled and animation CSS is a stylesheet,
   so `style-src 'self'` needs no exceptions. Animations stop under
   `prefers-reduced-motion`.

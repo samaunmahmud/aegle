@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { SpecialtySummary, WorklistItem, WorklistState } from "../api/types";
+import type { WorklistItem, WorklistState } from "../api/types";
+import { useDepartmentSummary } from "../components/DepartmentSummary";
 import { AiTag, PriorityTag, StateBadge } from "../components/Badges";
+import { PriorityExplain } from "../components/PriorityExplain";
 import { Icon, SpecialtyIcon } from "../components/Icons";
 import { clock, probability, slaStatus, titleCase, waited } from "../format";
 import { SPECIALTIES, specialtyById, specialtyBySlug } from "../specialties";
@@ -29,7 +31,7 @@ export function WorklistPage() {
   const specialty = specialtyBySlug(slug);
   const [view, setView] = useState(VIEWS[0]);
   const [items, setItems] = useState<WorklistItem[] | null>(null);
-  const [summary, setSummary] = useState<SpecialtySummary[]>([]);
+  const summary = useDepartmentSummary().summary ?? [];
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -59,13 +61,7 @@ export function WorklistPage() {
     return () => clearInterval(interval);
   }, [load]);
 
-  // Department counts change slowly, and every read is audited: refresh them once a minute.
-  useEffect(() => {
-    const loadSummary = () => api.worklistSummary().then(setSummary).catch(() => setSummary([]));
-    loadSummary();
-    const interval = setInterval(loadSummary, 60_000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   const counts = useMemo(() => {
     const list = (items ?? []).filter((i) => !mrn || i.patientMrn.toLowerCase().includes(mrn.toLowerCase()));
@@ -274,9 +270,8 @@ export function WorklistPage() {
                     >
                       <td>
                         <PriorityTag urgency={it.urgencyClass} />
-                        <span className="priority-score" title="Priority score: AI urgency plus time waiting">
-                          {it.effectivePriority.toFixed(0)}
-                        </span>
+                        <span className="priority-score">{it.effectivePriority.toFixed(0)}</span>
+                        <PriorityExplain reason={it.priorityReason} waitBonus={it.waitBonus} />
                       </td>
                       <td>
                         <span className="mrn">{it.patientMrn}</span>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError } from "../api/client";
-import type { ModelEntry, SpecialtySummary } from "../api/types";
+import { api } from "../api/client";
+import type { ModelEntry } from "../api/types";
+import { useDepartmentSummary } from "../components/DepartmentSummary";
 import { useAuth } from "../auth/AuthContext";
 import { Icon, SpecialtyIcon } from "../components/Icons";
 import { MedicalArt } from "../components/MedicalArt";
@@ -15,24 +16,12 @@ function greeting(d: Date) {
 
 export function OverviewPage() {
   const { name } = useAuth();
-  const [summary, setSummary] = useState<SpecialtySummary[] | null>(null);
+  const { summary, updatedAt } = useDepartmentSummary();
   const [models, setModels] = useState<ModelEntry[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const now = updatedAt || Date.now();
 
   useEffect(() => {
-    const load = () =>
-      api
-        .worklistSummary()
-        .then((s) => {
-          setSummary(s);
-          setNow(Date.now());
-        })
-        .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load the overview"));
-    load();
     api.models().then(setModels).catch(() => setModels([]));
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
   }, []);
 
   const bySpecialty = new Map((summary ?? []).map((s) => [s.specialty, s]));
@@ -82,8 +71,6 @@ export function OverviewPage() {
           </Link>
         </div>
       </div>
-
-      {error && <p className="error-text">{error}</p>}
 
       <div className="dept-grid">
         {SPECIALTIES.map((sp) => {

@@ -3,6 +3,7 @@ import { api, ApiError } from "../api/client";
 import type { ModelEntry } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { Icon, SpecialtyIcon } from "../components/Icons";
+import { ModelPerformance } from "../components/ModelPerformance";
 import { PageHeader } from "../components/PageHeader";
 import { dateTime } from "../format";
 import { SPECIALTIES } from "../specialties";
@@ -135,6 +136,12 @@ function ModelCard({ model, onToggle, canToggle }: { model: ModelEntry; onToggle
           {typeof caveat === "string" && <div className="small muted">{caveat}</div>}
         </div>
       </div>
+      {test && (test["confusion"] || test["per_class"]) ? (
+        <details className="perf">
+          <summary>Performance on held-out patients: confusion matrix and per-class results</summary>
+          <ModelPerformance test={test} unit={model.modality === "MR" ? "slices" : "cases"} />
+        </details>
+      ) : null}
     </article>
   );
 }
