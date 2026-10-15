@@ -12,5 +12,5 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "security-headers.ts", "scripts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "security-headers.ts", "security-headers.test.ts", "scripts"]
 }
