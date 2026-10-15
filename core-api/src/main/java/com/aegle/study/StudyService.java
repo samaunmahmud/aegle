@@ -92,7 +92,7 @@ public class StudyService {
 
     public UploadResult upload(Actor actor, byte[] data, UploadRequest req) {
         String mime = ImageSniffer.detect(data)
-                .orElseThrow(() -> new BadRequestException("Unsupported file: expected PNG, JPEG, DICOM, EDF (EEG) or an ECG CSV"));
+                .orElseThrow(() -> new BadRequestException("Unsupported file: expected PNG, JPEG, TIFF, DICOM, EDF (EEG) or an ECG CSV"));
         NewStudy study = new NewStudy("UPLOAD", req, null, null, List.of(new NewInstance(data, mime, null, Map.of())));
         return tenantTx.executeAs(actor.orgId(), () -> create(actor.orgId(), actor.userId(), study));
     }
@@ -282,7 +282,7 @@ public class StudyService {
 
     /**
      * The study's key image. Anything a browser cannot show (DICOM images and ECGs, ECG
-     * CSVs) is returned as a PNG rendering made by the inference service on first view and
+     * CSVs, TIFF) is returned as a PNG rendering made by the inference service on first view and
      * kept next to the original.
      */
     public ImageBytes image(Actor actor, UUID studyId) {

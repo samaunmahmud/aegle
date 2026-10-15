@@ -15,6 +15,8 @@ class ImageSnifferTest {
         byte[] dicom = new byte[200];
         dicom[128] = 'D'; dicom[129] = 'I'; dicom[130] = 'C'; dicom[131] = 'M';
         assertThat(ImageSniffer.detect(dicom)).contains("application/dicom");
+        assertThat(ImageSniffer.detect(new byte[]{'I', 'I', 42, 0, 8, 0})).contains("image/tiff");
+        assertThat(ImageSniffer.detect(new byte[]{'M', 'M', 0, 42, 0, 8})).contains("image/tiff");
     }
 
     @Test

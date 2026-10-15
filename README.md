@@ -20,7 +20,7 @@ clinician decides.
         │
         ▼
  Inference workers (Python / FastAPI): one adapter per registered model
-   images (PNG/JPEG/DICOM), ECG (DICOM waveform/CSV), EEG (EDF)
+   images (PNG/JPEG/TIFF/DICOM), ECG (DICOM waveform/CSV), EEG (EDF)
    → probabilities + explanation (Grad-CAM, saliency, timeline) + measurements
    + model version and weights hash
 

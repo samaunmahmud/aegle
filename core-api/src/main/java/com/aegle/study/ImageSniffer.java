@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 
 /**
  * Identifies supported uploads by content, not by the client-supplied name or type: PNG,
- * JPEG, DICOM (images and ECG waveforms), EDF (EEG), and ECG CSV exports (a header row of
- * lead names).
+ * JPEG, TIFF (pathology tiles), DICOM (images and ECG waveforms), EDF (EEG), and ECG CSV
+ * exports (a header row of lead names).
  */
 final class ImageSniffer {
 
@@ -22,6 +22,12 @@ final class ImageSniffer {
         }
         if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
             return Optional.of("image/jpeg");
+        }
+        // TIFF, little- ("II*\0") or big-endian ("MM\0*"): browsers cannot show it, so the
+        // image endpoint serves a PNG rendering (see StudyService.image).
+        if (b.length >= 4 && ((b[0] == 'I' && b[1] == 'I' && b[2] == 42 && b[3] == 0)
+                || (b[0] == 'M' && b[1] == 'M' && b[2] == 0 && b[3] == 42))) {
+            return Optional.of("image/tiff");
         }
         if (b.length > 132 && b[128] == 'D' && b[129] == 'I' && b[130] == 'C' && b[131] == 'M') {
             return Optional.of("application/dicom");

@@ -122,7 +122,7 @@ export function UploadPage() {
           </span>
           <input
             type="file"
-            accept="image/png,image/jpeg,.dcm,application/dicom,.csv,text/csv,.edf"
+            accept="image/png,image/jpeg,image/tiff,.tif,.tiff,.dcm,application/dicom,.csv,text/csv,.edf"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
@@ -131,7 +131,7 @@ export function UploadPage() {
               ? "DICOM 12-lead ECG, or a CSV with a header row of lead names (I, II, III, aVR, aVL, aVF, V1–V6) and optional “# fs=500 units=mV” line."
               : choice.preset.modality === "EEG"
                 ? "EDF export with 10-20 electrodes (bipolar or referential), up to 50 MB."
-                : "PNG, JPEG or DICOM, up to 50 MB."}{" "}
+                : "PNG, JPEG, TIFF or DICOM, up to 50 MB."}{" "}
             File names are never stored.
           </span>
         </label>
