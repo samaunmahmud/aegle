@@ -48,15 +48,11 @@ the browser only ever talks to one origin. `src/api/client.ts` wraps `fetch`,
 attaches a freshly-refreshed bearer token, and parses the RFC 7807
 `ProblemDetail` error bodies core-api returns.
 
-## Known dev-environment gotcha
+## Demo user IDs
 
-Keycloak runs in `start-dev` mode with no persistent volume for its own
-store, so **restarting the `keycloak` container reissues new internal user
-IDs** for the demo users even though the realm JSON looks identical. If a
-demo login that used to work suddenly gets a 403 from core-api after a
-`docker compose restart`/`up` cycle, that's why: core-api provisions a user
-row keyed by Keycloak's subject claim on first login, and the old row (same
-email, different subject) is still there. Fix locally with `docker compose
-down -v` (wipes all local dev data), or, when you want to keep local test
-data, re-point the row by hand: update the `users.idp_subject` for that email
-to the new token's `sub`.
+Keycloak runs in `start-dev` mode with no persistent volume for its own store, so it
+re-imports `infra/keycloak/aegle-realm.json` on every container start. The realm pins
+each demo user's `id`, so their token subject stays the same across restarts and the
+`users` rows core-api provisioned on first login keep working. Give any user you add to
+the realm a fixed `id` too; otherwise each restart issues a new subject and that login
+gets a 403 (core-api refuses a second account for the same email).

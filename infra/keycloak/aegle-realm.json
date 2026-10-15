@@ -82,6 +82,7 @@
   ],
   "users": [
     {
+      "id": "5b76715e-c18a-4c0c-a855-1c23249ef8c0",
       "username": "rita.radiologist",
       "enabled": true,
       "emailVerified": true,
@@ -105,6 +106,7 @@
       ]
     },
     {
+      "id": "e9e6459a-83cd-4926-82b4-03122aec3663",
       "username": "paul.physician",
       "enabled": true,
       "emailVerified": true,
@@ -128,6 +130,7 @@
       ]
     },
     {
+      "id": "ee2a4df5-7e40-41b8-9d60-7e8068f5c83a",
       "username": "alex.auditor",
       "enabled": true,
       "emailVerified": true,
@@ -151,6 +154,7 @@
       ]
     },
     {
+      "id": "129a12f7-45c5-43c0-945c-6a7ca20279a6",
       "username": "ada.admin",
       "enabled": true,
       "emailVerified": true,
@@ -174,6 +178,7 @@
       ]
     },
     {
+      "id": "fab8f2b5-e2fb-4493-8a67-20311703b1c8",
       "username": "otto.other",
       "enabled": true,
       "emailVerified": true,

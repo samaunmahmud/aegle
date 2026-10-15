@@ -80,7 +80,7 @@ services:
     ports:
       - "8443:8443"   # https only
     volumes:
-      - ./infra/keycloak:/opt/keycloak/data/import:ro
+      - ./infra/keycloak/aegle-realm.json:/opt/keycloak/data/import/aegle-realm.json:ro
       - ./infra/tls/certs:/certs:ro
 
   # Production-style frontend (nginx). Off by default; dev uses `npm run dev`.
