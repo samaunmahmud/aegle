@@ -153,8 +153,21 @@ Per transaction, the API sets the tenant with
 `SET LOCAL app.current_org_id = '<uuid>'`. With no tenant set, queries return
 no rows.
 
-See `frontend/README.md` for demo logins and a gotcha around Keycloak's
-dev-mode storage not surviving container restarts.
+See `frontend/README.md` for demo logins.
+
+### Tests
+
+GitHub Actions (`.github/workflows/ci.yml`) runs all three suites on every push and pull
+request. Locally:
+
+```bash
+cd core-api && mvn test                                # needs Docker: Postgres via Testcontainers
+cd inference-service && .venv/bin/python -m pytest -q # builds small models; no weights needed
+cd frontend && npm run lint && npm test && npm run build
+```
+
+`training/serving_check.py` (in inference-service) checks a running inference service
+against each model's recorded test results.
 
 ## Data policy
 
@@ -169,6 +182,7 @@ Never commit patient or imaging data, datasets, or model weights.
    detail with Grad-CAM overlay, clinician review, audit log)
 4. Security and compliance — done for this stage (service authentication, TLS
    everywhere, tamper-evident audit, rate limits, per-organisation model control)
+4b. Continuous integration — done (backend, inference and frontend tests on every push)
 5. Multi-specialty models — in progress (see the table above and docs/models.md)
 6. Blocked on data access: echocardiography (EchoNet data use agreement), leukaemia
    on blood smears (C-NMC downloads only through IBM Aspera), glaucoma (needs a
