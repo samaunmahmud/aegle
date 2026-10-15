@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { age, duration, probability, slaStatus, titleCase, waited } from "./format";
+import { age, clinicalDate, clinicalDateTime, clinicalDay, clock, duration, patientName, probability, slaStatus, titleCase, waited } from "./format";
 
 describe("duration", () => {
   it("uses minutes, then hours, then days", () => {
@@ -71,5 +71,25 @@ describe("probability", () => {
     expect(probability(1)).toBe(">99.9%");
     expect(probability(0.00004)).toBe("<0.1%");
     expect(probability(0)).toBe("<0.1%");
+  });
+});
+
+describe("clinical display formats", () => {
+  it("writes dates with a named month, so 03/04 cannot be misread", () => {
+    expect(clinicalDate("1971-02-19")).toBe("19-Feb-1971");
+    expect(clinicalDate(new Date(2026, 9, 5, 23, 59))).toBe("05-Oct-2026");
+  });
+
+  it("uses the 24-hour clock", () => {
+    expect(clinicalDateTime(new Date(2026, 9, 15, 9, 5))).toBe("15-Oct-2026 09:05");
+    expect(clock(new Date(2026, 9, 15, 22, 41))).toBe("22:41");
+    expect(clinicalDay(new Date(2026, 9, 15))).toBe("Thu 15-Oct-2026");
+  });
+
+  it("puts the family name first, in capitals", () => {
+    expect(patientName("Priya Natarajan")).toBe("NATARAJAN, Priya");
+    expect(patientName("Mary Ann Smith")).toBe("SMITH, Mary Ann");
+    expect(patientName("Cher")).toBe("CHER");
+    expect(patientName(null)).toBeNull();
   });
 });

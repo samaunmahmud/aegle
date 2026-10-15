@@ -1,6 +1,7 @@
 {
   "realm": "aegle",
   "enabled": true,
+  "loginTheme": "aegle",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "bruteForceProtected": true,

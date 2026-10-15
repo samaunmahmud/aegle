@@ -1,0 +1,17 @@
+/* MedicalArt animations. Bundled with the app (its CSP allows no inline <style>), and
+   embedded into the standalone SVGs by scripts/render-art.tsx. Nothing moves for people who
+   ask for reduced motion; "hover" art only moves while pointed at. */
+.ma-a{animation-play-state:running}
+.ma-hover .ma-a{animation-play-state:paused}
+.ma-hover:hover .ma-a,.ma-live .ma-a{animation-play-state:running}
+@media (prefers-reduced-motion:reduce){.ma-a{animation:none!important}}
+@keyframes ma-scan{from{transform:translateY(-12px)}to{transform:translateY(212px)}}
+@keyframes ma-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes ma-sweep{from{stroke-dashoffset:1}to{stroke-dashoffset:-1}}
+@keyframes ma-pulse{0%,100%{opacity:.25}50%{opacity:.6}}
+@keyframes ma-march{to{stroke-dashoffset:-24}}
+@keyframes ma-spin{to{transform:rotate(360deg)}}
+@keyframes ma-drift{0%,100%{transform:translate(0,0)}50%{transform:translate(-14px,-6px)}}
+@keyframes ma-advance{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes ma-tile{0%,22%{transform:translate(0,0)}33%,55%{transform:translate(118px,26px)}66%,88%{transform:translate(52px,92px)}100%{transform:translate(0,0)}}
+@keyframes ma-blink{0%,100%{opacity:1}50%{opacity:.35}}

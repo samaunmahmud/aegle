@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Icon } from "../components/Icons";
 import { keycloak, roles as parseRoles, displayName, type Role } from "./keycloak";
 
 interface AuthState {
@@ -60,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <div className="centered-loader">
-        <p>Signing in&hellip;</p>
+        <Icon.Logo />
+        <p>Aegle · signing in&hellip;</p>
       </div>
     );
   }

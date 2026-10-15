@@ -1,7 +1,38 @@
 # Aegle web
 
-React + TypeScript clinician UI: worklist, study upload, study detail
-(image + Grad-CAM heatmap + review), and an audit log for admins/auditors.
+React + TypeScript clinician UI: department overview, reporting worklist, study upload,
+a reading-room study view (image viewer + Grad-CAM + signed review), the AI model
+registry, and an audit log for admins/auditors. The Keycloak sign-in pages use a matching
+theme (`infra/keycloak/themes/aegle`).
+
+## Design
+
+Modelled on hospital systems (EHR, RIS/PACS) rather than a SaaS dashboard:
+
+- **Application bar** like an EHR: organisation and department, patient search by MRN
+  (`/` focuses it), a 24-hour clock, the signed-in clinician and role, and a permanent
+  research-prototype marker.
+- **Patient banner** after the NHS Common User Interface layout: `FAMILY, Given`, date of
+  birth with age, gender and MRN, always above the image. Dates are `15-Oct-2026` and
+  times 24-hour everywhere (`src/format.ts`), so `03/04` can never be misread.
+- **Reporting worklist** like a RIS: department rail with live counts, one-click
+  critical/urgent/overdue filters, sortable columns, keyboard reading (up/down, Enter).
+- **Triage is never colour alone**: every priority shows a code and a word (`P1 Critical`),
+  which also works in greyscale and for colour-blind readers.
+- **AI output is always marked** with the violet `AI` tag and stays a suggestion until a
+  clinician signs a review (Agree / Amend / Disagree). Reviews cannot be signed from the
+  keyboard, so a stray key cannot record a clinical decision.
+- **Reading room**: images are read on a dark surface with PACS-style tools: wheel zoom
+  about the cursor, drag to pan, brightness/contrast, invert, AI overlay with opacity,
+  DICOM-style corner text, and shortcuts (`?` lists them).
+- **Illustrations, not patient images**, on the overview and sign-in pages
+  (`src/components/MedicalArt.tsx`, drawn procedurally). The repository holds no imaging
+  data, and the app never loads a patient's image the clinician has not opened: every
+  image view is written to the audit log. `npx vite-node scripts/render-art.tsx`
+  regenerates the sign-in artwork from the same components.
+- **Strict CSP kept**: fonts (IBM Plex) are bundled and animation CSS is a stylesheet,
+  so `style-src 'self'` needs no exceptions. Animations stop under
+  `prefers-reduced-motion`.
 
 ## Run locally
 

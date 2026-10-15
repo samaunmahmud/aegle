@@ -24,11 +24,76 @@ function Svg({ children, size = 18 }: { children: ReactNode; size?: number }) {
 }
 
 export const Icon = {
+  // Aegle, daughter of Asclepius: a shield (care, protection) carrying a cross and a pulse.
   Logo: () => (
-    <svg width={28} height={28} viewBox="0 0 28 28" aria-hidden="true">
-      <rect width="28" height="28" rx="7" fill="currentColor" opacity="0.16" />
-      <path d="M14 6v16M6 14h16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    <svg width={30} height={30} viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8C9.6 26.9 5 21.7 5 14.7V6.5z" fill="#14a3a3" />
+      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8z" fill="#0e8a8c" />
+      <path d="M8.5 16h4l1.6-3.4 2.8 6.8 1.6-3.4h5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  ),
+  Search: () => (
+    <Svg size={16}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Svg>
+  ),
+  ZoomIn: () => (
+    <Svg>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5M11 8v6M8 11h6" />
+    </Svg>
+  ),
+  ZoomOut: () => (
+    <Svg>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5M8 11h6" />
+    </Svg>
+  ),
+  Contrast: () => (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" />
+    </Svg>
+  ),
+  Invert: () => (
+    <Svg>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 21 21 3V21z" fill="currentColor" />
+    </Svg>
+  ),
+  Reset: () => (
+    <Svg>
+      <path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6" />
+      <path d="M4 4v4.6h4.6" />
+    </Svg>
+  ),
+  Layers: () => (
+    <Svg>
+      <path d="m12 3 9 5-9 5-9-5z" />
+      <path d="m3 13 9 5 9-5" />
+    </Svg>
+  ),
+  Expand: () => (
+    <Svg>
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    </Svg>
+  ),
+  Keyboard: () => (
+    <Svg>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+    </Svg>
+  ),
+  Sparkle: () => (
+    <Svg size={14}>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5" />
+    </Svg>
+  ),
+  Chevron: () => (
+    <Svg size={14}>
+      <path d="m9 6 6 6-6 6" />
+    </Svg>
   ),
   Overview: () => (
     <Svg>
