@@ -66,9 +66,29 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Text is sized in rem, so the base size scales the whole interface. Reading rooms use
+   large monitors viewed from further back, so wide screens get a larger base. */
+@media (min-width: 1400px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1600px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 2200px) {
+  html {
+    font-size: 18px;
+  }
 }
 
 h1,
@@ -142,6 +162,7 @@ kbd {
 }
 
 .mrn {
+  white-space: nowrap;
   font-family: var(--mono);
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -164,6 +185,13 @@ kbd {
   background: linear-gradient(90deg, var(--appbar) 0%, var(--appbar-2) 100%);
   color: var(--appbar-text);
   border-bottom: 3px solid var(--teal);
+  white-space: nowrap;
+}
+
+@media (max-width: 1360px) {
+  .appbar-site {
+    display: none;
+  }
 }
 
 .appbar-brand {
@@ -1512,6 +1540,15 @@ textarea {
   border-color: var(--primary);
 }
 
+/* With the larger type, laptop widths can't fit every column; the reader is also shown
+   on the study itself, so it is the first to go. */
+@media (max-width: 1440px) {
+  .worklist-table th:nth-child(8),
+  .worklist-table td:nth-child(8) {
+    display: none;
+  }
+}
+
 .worklist-table tbody tr {
   cursor: pointer;
 }
@@ -1554,6 +1591,7 @@ textarea {
 
 .exam {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 0.55rem;
 }
@@ -2276,7 +2314,7 @@ textarea {
 
 .trend-axis {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: 0.68rem;
 }
 
 .trend-line {
@@ -2307,7 +2345,7 @@ textarea {
   color: #fff;
   border-radius: 4px;
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: 0.74rem;
   line-height: 1.3;
 }
 
