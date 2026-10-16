@@ -115,9 +115,9 @@ Every screenshot below is the real application running locally, signed in as one
 
 ### 1. Signing in
 
-Hospital staff sign in through Keycloak with a branded page. Single sign-on, multi-factor authentication and account policies live in the identity provider, not in the app.
+Hospital staff sign in through Keycloak with a branded page: the specialties Aegle covers on the left; on the right the clinic, a live clock, the sign-in form and the roles that use it. Single sign-on, multi-factor authentication and account policies live in the identity provider, not in the app.
 
-![Sign-in page: a secure clinical sign-in form next to illustrations of each specialty's imaging](docs/screenshots/signin.webp)
+![Sign-in page: illustrations of each specialty's imaging on the left; the clinic, a live clock, the sign-in form and the roles that use it on the right](docs/screenshots/signin.webp)
 
 ### 2. The department at a glance
 

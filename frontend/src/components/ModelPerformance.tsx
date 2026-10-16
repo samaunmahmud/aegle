@@ -8,7 +8,7 @@ type Confusion = { labels: string[]; rows_true_cols_predicted: number[][] };
 
 // Sequential blue ramp (one hue, light -> dark) for the confusion matrix; the lightest step
 // means "none" and recedes toward the surface.
-const RAMP = ["#f3f7fc", "#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"];
+const RAMP = ["#fbf3f6", "#f6dde5", "#f0c8d4", "#e9b2c3", "#e19bb1", "#d8849f", "#cd6c8c", "#c05479", "#b03f67", "#9c2f57", "#88234b", "#741a40", "#601436", "#4a0f2a"];
 const INK_FLIP = 8; // from this step on, cell text is white
 // Dark theme: its own steps, dark -> light, so more cases still reads as "stands out more"
 // against the dark surface; text flips to dark ink on the bright end.

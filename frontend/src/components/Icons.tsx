@@ -27,8 +27,8 @@ export const Icon = {
   // Aegle, daughter of Asclepius: a shield (care, protection) carrying a cross and a pulse.
   Logo: () => (
     <svg width={30} height={30} viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8C9.6 26.9 5 21.7 5 14.7V6.5z" fill="#14a3a3" />
-      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8z" fill="#0e8a8c" />
+      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8C9.6 26.9 5 21.7 5 14.7V6.5z" fill="#d0587c" />
+      <path d="M16 2.5 27 6.5v8.2c0 7-4.6 12.2-11 14.8z" fill="#b03a60" />
       <path d="M8.5 16h4l1.6-3.4 2.8 6.8 1.6-3.4h5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),

@@ -64,6 +64,20 @@
     </section>
 
     <section class="signin">
+        <svg class="signin-pulse" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 60h28l14-30 22 66 18-54 12 18h412l14-30 22 66 18-54 12 18h28" />
+        </svg>
+        <header class="signin-top">
+            <div class="clinic">
+                <svg class="clinic-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13M9 21v-5h6v5M12 7v5M9.5 9.5h5" /></svg>
+                <div>
+                    <div class="clinic-name">Aegle Demo Clinic</div>
+                    <div class="clinic-sub">Imaging &amp; Diagnostics</div>
+                </div>
+            </div>
+            <div class="clock" aria-hidden="true"><span id="clock-day"></span><strong id="clock-time"></strong></div>
+        </header>
+
         <div class="card">
             <div class="card-org">
                 <span class="org-dot"></span> Secure clinical sign-in
@@ -104,7 +118,37 @@
             </div>
             <div class="research">Research prototype · not a medical device · not for clinical use</div>
         </div>
-        <p class="help">Trouble signing in? Contact your system administrator.</p>
+        <div class="roles" aria-label="Who signs in here">
+            <span class="roles-label">One sign-in, the right view for each role</span>
+            <ul>
+                <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Radiologists</li>
+                <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v6a4 4 0 0 0 8 0V3M10 13v2a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/></svg>Physicians</li>
+                <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Auditors</li>
+                <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Admins</li>
+            </ul>
+        </div>
+
+        <dl class="facts">
+            <div><dt>7</dt><dd>departments</dd></div>
+            <div><dt>11</dt><dd>AI models</dd></div>
+            <div><dt>100%</dt><dd>of findings signed by a clinician</dd></div>
+        </dl>
+
+        <footer class="signin-foot">
+            <p class="help">Trouble signing in? Contact your system administrator.</p>
+            <p class="fine">Aegle · research prototype · &copy; 2026</p>
+        </footer>
+        <script>
+            (function () {
+                var day = document.getElementById("clock-day"), time = document.getElementById("clock-time");
+                function tick() {
+                    var d = new Date();
+                    day.textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+                    time.textContent = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                }
+                tick(); setInterval(tick, 15000);
+            })();
+        </script>
     </section>
 </main>
 </body>
