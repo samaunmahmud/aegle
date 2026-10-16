@@ -62,26 +62,16 @@ export function StudyDetailPage() {
     };
   }, [id]);
 
-  // Earlier studies of the same examination for this patient, newest first. Only the list is
-  // fetched here; a prior's image loads (and is audited) when the clinician asks for it.
-  const mrn = detail?.patient.mrn;
-  const examKey = detail ? `${detail.study.modality}/${detail.study.bodyPart}` : null;
-  const specialtyId = detail?.study.specialty;
+  // Earlier studies of the same examination for this patient, newest first, found by the
+  // server. Only the list is fetched; a prior's image loads (and is audited) when asked for.
   useEffect(() => {
     setPrior(null);
-    if (!mrn || !examKey || !specialtyId) return;
+    if (!id) return;
     api
-      .studies()
-      .then((all) =>
-        setPriors(
-          all
-            .filter((s) => s.patientMrn === mrn && s.id !== id && `${s.modality}/${s.bodyPart}` === examKey)
-            .sort((a, b) => Date.parse(b.studyDate ?? b.createdAt) - Date.parse(a.studyDate ?? a.createdAt))
-            .map((s) => ({ ...s, status: s.status as StudySummary["status"], source: "UPLOAD" as const, specialty: specialtyId })),
-        ),
-      )
+      .priors(id)
+      .then(setPriors)
       .catch(() => setPriors([]));
-  }, [mrn, examKey, specialtyId, id]);
+  }, [id]);
 
   useEffect(
     () => () => {

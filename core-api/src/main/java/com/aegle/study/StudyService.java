@@ -188,6 +188,36 @@ public class StudyService {
         });
     }
 
+    /**
+     * The same patient's other studies of the same examination, newest first, for comparison.
+     * Looked up on the server so the browser never needs the whole study list to find them.
+     */
+    public List<StudySummary> priors(Actor actor, UUID studyId) {
+        return tenantTx.executeAs(actor.orgId(), () -> {
+            boolean exists = jdbc.sql("SELECT count(*) FROM studies WHERE id = :id").param("id", studyId)
+                    .query(Long.class).single() > 0;
+            if (!exists) {
+                throw new NotFoundException("study");
+            }
+            List<StudySummary> rows = jdbc.sql("""
+                    SELECT s.id, s.status, s.source, aegle_specialty(s.modality, s.body_part) AS specialty,
+                           s.modality, s.body_part, s.accession_no, s.study_date, s.created_at,
+                           p.mrn_encrypted
+                    FROM studies me
+                    JOIN studies s ON s.patient_id = me.patient_id AND s.id <> me.id
+                                  AND s.modality = me.modality AND s.body_part IS NOT DISTINCT FROM me.body_part
+                    JOIN patients p ON p.id = s.patient_id
+                    WHERE me.id = :id
+                    ORDER BY COALESCE(s.study_date, CAST(s.created_at AS date)) DESC, s.created_at DESC
+                    LIMIT 20""")
+                    .param("id", studyId)
+                    .query((rs, i) -> summary(rs)).list();
+            audit.record(actor.orgId(), actor.userId(), "STUDY_PRIORS_LISTED", "study", studyId.toString(),
+                    Map.of("count", rows.size()));
+            return rows;
+        });
+    }
+
     public StudyDetail detail(Actor actor, UUID studyId) {
         return tenantTx.executeAs(actor.orgId(), () -> {
             var row = jdbc.sql("""

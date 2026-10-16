@@ -73,6 +73,11 @@ public class StudyController {
         return studies.detail(users.require(), id);
     }
 
+    @GetMapping("/{id}/priors")
+    public List<StudyService.StudySummary> priors(@PathVariable UUID id) {
+        return studies.priors(users.require(), id);
+    }
+
     @GetMapping("/{id}/heatmap")
     public ResponseEntity<byte[]> heatmap(@PathVariable UUID id) {
         return image(studies.heatmap(users.require(), id));

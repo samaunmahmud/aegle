@@ -42,6 +42,21 @@ class MeasurementTest extends IntegrationTestBase {
     }
 
     @Test
+    void priorsAreTheSamePatientsOtherStudiesOfTheSameExamNewestFirst() throws Exception {
+        UUID first = visit("PRIOR-1", 10, "2026-09-01");
+        UUID second = visit("PRIOR-1", 10, "2026-09-15");
+        UUID latest = visit("PRIOR-1", 10, "2026-09-29");
+        visit("PRIOR-OTHER", 10, "2026-09-20");
+
+        JsonNode priors = body(mvc.perform(get("/api/studies/" + latest + "/priors").with(radiologist())).andReturn());
+        assertThat(priors).hasSize(2);
+        assertThat(priors.get(0).get("id").asText()).isEqualTo(second.toString());
+        assertThat(priors.get(1).get("id").asText()).isEqualTo(first.toString());
+        mvc.perform(get("/api/studies/" + UUID.randomUUID() + "/priors").with(radiologist()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void studiesWithoutMeasurementsHaveNoHistory() throws Exception {
         UUID study = visit("PLAIN-1", 10, "2026-09-01");
         JsonNode d = body(mvc.perform(get("/api/studies/" + study).with(radiologist())).andReturn());

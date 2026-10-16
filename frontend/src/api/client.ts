@@ -14,6 +14,7 @@ import type {
   ModelEntry,
   SpecialtySummary,
   StudyDetail,
+  StudySummary,
   UploadRequest,
   UploadResult,
   WorklistPage,
@@ -117,6 +118,7 @@ export const api = {
     >(`/api/studies${status ? `?status=${status}` : ""}`),
 
   study: (id: string) => request<StudyDetail>(`/api/studies/${id}`),
+  priors: (id: string) => request<StudySummary[]>(`/api/studies/${id}/priors`),
 
   studyImage: (id: string) => requestBlob(`/api/studies/${id}/image`),
   studyHeatmap: (id: string) => requestBlob(`/api/studies/${id}/heatmap`),
