@@ -111,7 +111,7 @@ Hospitals produce far more scans, slides and recordings than their specialists c
 
 ## A tour of the app
 
-Every screenshot below is the real application running locally, signed in as one of the demo clinicians. The patients are fictional.
+Every screenshot below is the real application running locally, signed in as one of the demo clinicians. The patients are fictional. Click any image to see it at full resolution.
 
 ### 1. Signing in
 
@@ -125,52 +125,76 @@ The first screen after sign-in: open, critical, urgent and overdue work across t
 
 ![Department overview: totals, a workload chart by department and a card per specialty with live counts](docs/screenshots/overview.webp)
 
+The workload chart puts departments with critical findings first and keeps every bar on one scale:
+
+![Workload by department: critical, urgent and other open studies per specialty, with overdue counts](docs/screenshots/workload.webp)
+
 ### 3. The reporting worklist
 
 Cases ranked by AI-assessed urgency and time waiting, not arrival order. Every priority shows a code and a word (`P1 Critical`), so it never relies on colour alone. A department rail, one-click filters, sorting, and keyboard reading (↑ ↓ Enter) make it work like a radiology information system.
 
 ![Reporting worklist: critical malaria cases at the top, then urgent brain MRIs, with AI findings, waiting time and report deadlines](docs/screenshots/worklist.webp)
 
-| Critical cases only | "Why this priority?" |
-| :---: | :---: |
-| ![Worklist filtered to critical cases](docs/screenshots/worklist-critical.webp) | ![The priority breakdown: 98.5% parasitized × urgency weight 100, plus 20 points for time waiting, gives 118.7](docs/screenshots/priority-why.webp) |
-| One click narrows the list to P1 findings. | The score is never a black box: each label's probability × its urgency weight, plus a bonus for time waiting. |
+**"Why this priority?"** The score is never a black box: hover the ⓘ to see each label's probability × its urgency weight, plus a bonus for time waiting.
+
+![The priority breakdown: 98.5% parasitized × urgency weight 100, plus 20 points for time waiting, gives 118.7](docs/screenshots/priority-why.webp)
+
+**Critical cases only:** one click narrows the list to P1 findings.
+
+![Worklist filtered to critical cases](docs/screenshots/worklist-critical.webp)
 
 ### 4. Reading a study
 
-A dark reading-room viewer with PACS-style tools: wheel zoom about the cursor, drag to pan, brightness and contrast, invert, and the AI heatmap with adjustable opacity. The patient banner follows the NHS Common User Interface layout, so identity is always above the image.
+A dark reading-room viewer with PACS-style tools: wheel zoom about the cursor, drag to pan, brightness and contrast, invert, and the AI heatmap with adjustable opacity. The patient banner follows the NHS Common User Interface layout, so identity is always above the image, and the pipeline strip shows where the study is.
 
 ![Brain MRI with the AI heatmap over a tumour, the model's finding (glioma 99.9%) and the Agree / Amend / Disagree review panel](docs/screenshots/study-brain.webp)
 
-| The finding, explained | Keyboard shortcuts |
-| :---: | :---: |
-| ![The findings panel with the priority breakdown and what the model can and cannot do](docs/screenshots/study-explained.webp) | ![Chest X-ray with the viewer shortcut card open](docs/screenshots/viewer-shortcuts.webp) |
-| Each finding shows its priority breakdown, the model's intended use and limits, and the exact weights it ran with. | `?` lists the shortcuts. Reviews can never be signed from the keyboard, so a stray key cannot record a clinical decision. |
+`?` lists the viewer's shortcuts. Reviews can never be signed from the keyboard, so a stray key cannot record a clinical decision.
+
+![Chest X-ray with the viewer shortcut card open](docs/screenshots/viewer-shortcuts.webp)
 
 ### 5. Every department, one platform
 
 The same worklist, viewer and review flow for every specialty. Only the model behind it changes.
 
-| | |
-| :---: | :---: |
-| **Radiology: chest X-ray, pneumonia** | **Pathology: malaria on a blood smear** |
-| ![Chest X-ray with the pneumonia heatmap](docs/screenshots/study-chest.webp) | ![A blood-smear cell flagged as parasitized, P1 critical](docs/screenshots/study-malaria.webp) |
-| **Pathology: colorectal tissue** | **Pathology: prostate Gleason pattern** |
-| ![An H&E tissue tile classified as tumour epithelium](docs/screenshots/study-tissue.webp) | ![A prostate biopsy patch graded Gleason 3, with a prior to compare](docs/screenshots/study-prostate.webp) |
-| **Gastroenterology: colonoscopy** | **Ophthalmology: diabetic retinopathy** |
-| ![A colonoscopy frame with a polyp highlighted](docs/screenshots/study-colonoscopy.webp) | ![A retinal photograph graded moderate diabetic retinopathy](docs/screenshots/study-fundus.webp) |
-| **Dermatology: skin lesion** | **Cardiology: 12-lead ECG** |
-| ![A dermoscopy image classified as basal cell carcinoma](docs/screenshots/study-skin.webp) | ![A 12-lead ECG read as atrial fibrillation](docs/screenshots/study-ecg.webp) |
-| **Neurology: EEG seizure detection** | **Neurology: brain MRI (Lights off)** |
-| ![An EEG recording with the AI's seizure timeline](docs/screenshots/study-eeg.webp) | ![The brain MRI study in the dark theme](docs/screenshots/study-brain-dark.webp) |
+**Radiology: chest X-ray, pneumonia**
+![Chest X-ray with the pneumonia heatmap](docs/screenshots/study-chest.webp)
+
+**Pathology: malaria on a blood smear** (a P1 critical finding)
+![A blood-smear cell flagged as parasitized, P1 critical](docs/screenshots/study-malaria.webp)
+
+**Pathology: colorectal tissue**
+![An H&E tissue tile classified as tumour epithelium](docs/screenshots/study-tissue.webp)
+
+**Pathology: prostate Gleason pattern**
+![A prostate biopsy patch graded Gleason 3, with a prior to compare](docs/screenshots/study-prostate.webp)
+
+**Gastroenterology: colonoscopy**
+![A colonoscopy frame with a polyp highlighted](docs/screenshots/study-colonoscopy.webp)
+
+**Ophthalmology: diabetic retinopathy**
+![A retinal photograph graded moderate diabetic retinopathy](docs/screenshots/study-fundus.webp)
+
+**Dermatology: skin lesion**
+![A dermoscopy image classified as basal cell carcinoma](docs/screenshots/study-skin.webp)
+
+**Cardiology: 12-lead ECG**
+![A 12-lead ECG read as atrial fibrillation](docs/screenshots/study-ecg.webp)
+
+**Neurology: EEG seizure detection**
+![An EEG recording with the AI's seizure timeline](docs/screenshots/study-eeg.webp)
 
 ### 6. The clinician decides
 
-The AI's output stays a suggestion until a clinician chooses **Agree**, **Amend** (with the correct label) or **Disagree**, adds a comment and signs. The review history shows who decided what, and when.
+The AI's output stays a suggestion until a clinician chooses **Agree**, **Amend** (with the correct label) or **Disagree**, adds a comment and signs. Each finding also explains its priority, the model's intended use and limits, and the exact weights it ran with.
 
-| Signing a review | A signed study |
+| The finding, explained | Signing a review |
 | :---: | :---: |
-| ![Agree selected with a comment, ready to sign](docs/screenshots/review.webp) | ![A chest X-ray whose AI finding has been accepted by a consultant](docs/screenshots/reviewed.webp) |
+| <img src="docs/screenshots/study-explained.webp" alt="The finding with its priority breakdown and what the model can and cannot do" width="400" /> | <img src="docs/screenshots/review.webp" alt="Agree selected with a comment, ready to sign" width="400" /> |
+
+Once signed, the review history shows who decided what, and when:
+
+![A chest X-ray whose AI finding has been accepted by a consultant](docs/screenshots/reviewed.webp)
 
 ### 7. Comparing with earlier scans
 
@@ -180,15 +204,26 @@ Earlier studies of the same examination for the same patient appear as chips abo
 
 ### 8. New study, live AI, critical alert
 
-Drag a file onto the form, pick the examination, enter the patient. The study page then follows the pipeline live (**Received → Queued → AI analysing → Ready**) and the finding and heatmap appear the moment the model finishes. When a new P1 finding lands, an alert appears that **stays until someone acknowledges it**, as critical results must; the bell and the browser tab title count them too.
+Drag a file onto the form, pick the examination and enter the patient:
 
-| Upload | The pipeline, live |
-| :---: | :---: |
-| ![The new-study form with a blood-smear image dropped in](docs/screenshots/upload.webp) | ![The study page while the AI is still queued](docs/screenshots/pipeline.webp) |
-| **The finding arrives** | **Critical alert** |
-| ![The same study with the AI finding: parasitized, P1 critical](docs/screenshots/pipeline-done.webp) | ![A critical-finding alert with Open worklist and Acknowledge](docs/screenshots/critical-alert.webp) |
+![The new-study form with a blood-smear image dropped in](docs/screenshots/upload.webp)
 
-![The bell's panel: critical findings awaiting a report, by department](docs/screenshots/bell.webp)
+The study page then follows the pipeline live (**Received → Queued → AI analysing → Ready**):
+
+![The study page while the AI is still queued](docs/screenshots/pipeline.webp)
+
+…and the finding and heatmap appear the moment the model finishes, without a reload:
+
+![The same study with the AI finding: parasitized, P1 critical](docs/screenshots/pipeline-done.webp)
+
+When a new P1 finding lands, an alert appears that **stays until someone acknowledges it**, as critical results must. The bell and the browser tab title count them too.
+
+<p align="center">
+  <img src="docs/screenshots/critical-alert.webp" alt="A critical-finding alert with Open worklist and Acknowledge" width="760" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/bell.webp" alt="The bell's panel: critical findings awaiting a report, by department" width="580" />
+</p>
 
 ### 9. Consults: ask a colleague
 
@@ -196,19 +231,25 @@ A consult panel lives on the right of every clinical page. A doctor who is unsur
 
 The thread carries **a link to the study, never the patient's details**. Opening a thread, replying and resolving are audited; the background refresh is not, so an open panel doesn't flood the audit log.
 
-![The worklist with the consult panel open: consults with urgency, department and study chips](docs/screenshots/consults.webp)
+![The worklist with the consult panel open](docs/screenshots/consults.webp)
 
-| A conversation | Asking a colleague |
+| Consults waiting | A conversation |
 | :---: | :---: |
-| ![A consult thread between a histopathologist and a radiologist about a malaria smear](docs/screenshots/consult-thread.webp) | ![The new-consult form with colleagues listed by grade](docs/screenshots/consult-new.webp) |
+| <img src="docs/screenshots/consult-list.webp" alt="The consult list: urgency, department and study chips, who asked whom, unread counts" width="400" /> | <img src="docs/screenshots/consult-thread.webp" alt="A consult thread between a histopathologist and a radiologist about a malaria smear" width="400" /> |
+| **Asking a colleague** | **The same panel, Lights off** |
+| <img src="docs/screenshots/consult-new.webp" alt="The new-consult form with colleagues listed by grade" width="400" /> | <img src="docs/screenshots/consult-thread-dark.webp" alt="A consult thread in the dark theme" width="400" /> |
+
+Maximised, the panel gives a long discussion room to breathe:
 
 ![The consult panel maximised: a cardiologist asking about a post-operative chest X-ray](docs/screenshots/consult-max.webp)
 
 ### 10. The AI model registry, with the evidence
 
-Every model's held-out results, training data and licence, intended use and known limits, approval date and weights hash. Each card opens the evidence as charts: a confusion matrix you can hover, sensitivity and precision per class, and the model against the "shortcut" baseline. Weaknesses are shown, not hidden: the skin model, for example, misses about a third of melanomas.
+Every model's held-out results, training data and licence, intended use and known limits, approval date and weights hash.
 
 ![The AI model registry: held-out accuracy, AUC and calibration error, training data and intended use](docs/screenshots/models.webp)
+
+Each card opens the evidence as charts: a confusion matrix you can hover, sensitivity and precision per class, and the model against the "shortcut" baseline. Weaknesses are shown, not hidden: the skin model, for example, misses about a third of melanomas.
 
 ![Performance charts for the retinopathy model: confusion matrix, per-class sensitivity and precision, and the shortcut baseline](docs/screenshots/model-performance.webp)
 
@@ -216,42 +257,49 @@ Every model's held-out results, training data and licence, intended use and know
 
 `⌘K` / `Ctrl+K` jumps to any page or department, switches the theme, or finds a patient by MRN.
 
-![The command palette finding a patient by MRN](docs/screenshots/palette.webp)
+<p align="center">
+  <img src="docs/screenshots/palette.webp" alt="The command palette finding a patient by MRN" width="668" />
+</p>
 
 ### 12. Governance: audit log and DICOM senders
 
-Auditors see every read and write of patient data, newest first, and can **verify the hash chain** in one click. Administrators register the scanners (DICOM AE titles) whose studies flow in. Neither role can open patient images.
+Auditors see every read and write of patient data, newest first, and can **verify the hash chain** in one click. They can see the model registry, but never patient images.
 
-| Audit log (auditor) | DICOM senders (admin) |
-| :---: | :---: |
-| ![The audit log with the chain verified intact](docs/screenshots/audit.webp) | ![The DICOM senders page with a registered CR room](docs/screenshots/dicom.webp) |
+![The audit log with the chain verified intact](docs/screenshots/audit.webp)
 
-![The model registry as seen by an auditor](docs/screenshots/auditor-models.webp)
+Administrators register the scanners (DICOM AE titles) whose studies flow in:
+
+![The DICOM senders page with a registered CR room](docs/screenshots/dicom.webp)
 
 ### 13. Lights off
 
 Reading rooms are kept dim because low ambient light helps reading accuracy and reduces fatigue. One click (or the command palette) switches the whole application to a dark theme with its own contrast-checked colours, not an inverted light theme.
 
-| | |
-| :---: | :---: |
-| ![Department overview, dark](docs/screenshots/overview-dark.webp) | ![Reporting worklist, dark](docs/screenshots/worklist-dark.webp) |
-| ![Consults, dark](docs/screenshots/consults-dark.webp) | ![Consult thread, dark](docs/screenshots/consult-thread-dark.webp) |
+![Department overview, dark](docs/screenshots/overview-dark.webp)
+
+![Reporting worklist, dark](docs/screenshots/worklist-dark.webp)
+
+![Reporting worklist with the consult panel, dark](docs/screenshots/consults-dark.webp)
+
+![Brain MRI study, dark](docs/screenshots/study-brain-dark.webp)
 
 ### 14. On a phone
 
 The same app on a phone: the consult panel becomes a floating button and opens full screen, and nothing scrolls sideways.
 
 <p align="center">
-  <img src="docs/screenshots/phone-overview.webp" width="190" alt="Department overview on a phone" />
-  <img src="docs/screenshots/phone-worklist.webp" width="190" alt="Worklist on a phone" />
-  <img src="docs/screenshots/phone-study.webp" width="190" alt="Brain MRI study on a phone" />
-  <img src="docs/screenshots/phone-consult.webp" width="190" alt="A consult on a phone" />
+  <img src="docs/screenshots/phone-overview.webp" width="270" alt="Department overview on a phone" />
+  <img src="docs/screenshots/phone-worklist.webp" width="270" alt="Worklist on a phone" />
+  <img src="docs/screenshots/phone-study.webp" width="270" alt="Brain MRI study on a phone" />
 </p>
 <p align="center">
-  <img src="docs/screenshots/phone-overview-dark.webp" width="190" alt="Department overview on a phone, dark" />
-  <img src="docs/screenshots/phone-worklist-dark.webp" width="190" alt="Worklist on a phone, dark" />
-  <img src="docs/screenshots/phone-study-dark.webp" width="190" alt="Brain MRI study on a phone, dark" />
-  <img src="docs/screenshots/phone-consult-dark.webp" width="190" alt="A consult on a phone, dark" />
+  <img src="docs/screenshots/phone-consult.webp" width="270" alt="A consult on a phone" />
+  <img src="docs/screenshots/phone-overview-dark.webp" width="270" alt="Department overview on a phone, dark" />
+  <img src="docs/screenshots/phone-study-dark.webp" width="270" alt="Brain MRI study on a phone, dark" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/phone-worklist-dark.webp" width="270" alt="Worklist on a phone, dark" />
+  <img src="docs/screenshots/phone-consult-dark.webp" width="270" alt="A consult on a phone, dark" />
 </p>
 
 ---
