@@ -231,7 +231,11 @@ export function WorklistPage() {
         {error && <p className="error-text">{error}</p>}
 
         {!items ? (
-          <div className="panel empty-state">Loading worklist…</div>
+          <div className="panel skeleton-rows" aria-busy="true" aria-label="Loading worklist">
+            {Array.from({ length: 7 }, (_, i) => (
+              <div key={i} className="skeleton-light" />
+            ))}
+          </div>
         ) : rows.length === 0 ? (
           <div className="panel empty-state">
             <h2>{mrn ? `No studies for MRN “${mrn}”` : "Nothing waiting"}</h2>

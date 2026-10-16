@@ -6,6 +6,8 @@ import { useDepartmentSummary } from "../components/DepartmentSummary";
 import { useAuth } from "../auth/AuthContext";
 import { Icon, SpecialtyIcon } from "../components/Icons";
 import { MedicalArt } from "../components/MedicalArt";
+import { CountUp } from "../components/CountUp";
+import { WorkloadChart } from "../components/WorkloadChart";
 import { clinicalDay, clock, waited } from "../format";
 import { SPECIALTIES } from "../specialties";
 
@@ -54,23 +56,25 @@ export function OverviewPage() {
         </div>
         <div className="hero-stats" aria-label="Department totals">
           <Link to="/worklist" className="hero-stat">
-            <span className="hero-n">{summary ? totals.open : "–"}</span>
+            <span className="hero-n">{summary ? <CountUp value={totals.open} /> : "–"}</span>
             <span>open studies</span>
           </Link>
           <Link to="/worklist" className="hero-stat hero-critical">
-            <span className="hero-n">{summary ? totals.critical : "–"}</span>
+            <span className="hero-n">{summary ? <CountUp value={totals.critical} /> : "–"}</span>
             <span>critical</span>
           </Link>
           <Link to="/worklist" className="hero-stat hero-urgent">
-            <span className="hero-n">{summary ? totals.urgent : "–"}</span>
+            <span className="hero-n">{summary ? <CountUp value={totals.urgent} /> : "–"}</span>
             <span>urgent</span>
           </Link>
           <Link to="/worklist" className="hero-stat hero-breached">
-            <span className="hero-n">{summary ? totals.breached : "–"}</span>
+            <span className="hero-n">{summary ? <CountUp value={totals.breached} /> : "–"}</span>
             <span>past report deadline</span>
           </Link>
         </div>
       </div>
+
+      {summary && <WorkloadChart summary={summary} />}
 
       <div className="dept-grid">
         {SPECIALTIES.map((sp) => {

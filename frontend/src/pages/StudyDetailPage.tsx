@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { PredictionView, ReviewDecision, StudyDetail, StudySummary } from "../api/types";
 import { AiTag, PriorityTag, StatusBadge } from "../components/Badges";
+import { askColleague } from "../components/ConsultDock";
 import { Icon, SpecialtyIcon } from "../components/Icons";
 import { ImageViewer } from "../components/ImageViewer";
 import { PipelineSteps } from "../components/PipelineSteps";
@@ -104,7 +105,13 @@ export function StudyDetailPage() {
   }
 
   if (error) return <p className="error-text">{error}</p>;
-  if (!detail || !id) return <div className="panel empty-state">Loading study…</div>;
+  if (!detail || !id)
+    return (
+      <div className="panel skeleton-rows" aria-busy="true" aria-label="Loading study">
+        <div className="skeleton-light" />
+        <div className="skeleton-light" style={{ height: 420 }} />
+      </div>
+    );
 
   const { study, patient } = detail;
   const reviewedIds = new Set(detail.reviews.map((r) => r.predictionId));
@@ -124,6 +131,19 @@ export function StudyDetailPage() {
         <Link to={specialty ? `/worklist/${specialty.slug}` : "/worklist"}>
           ← {specialty ? `${specialty.name} worklist` : "Worklist"}
         </Link>
+        <button
+          type="button"
+          className="secondary ask-button"
+          onClick={() =>
+            askColleague({
+              studyId: study.id,
+              specialty: specialty?.id,
+              subject: `${study.modality} ${titleCase(study.bodyPart)}: second opinion`,
+            })
+          }
+        >
+          <Icon.Chat /> Ask a colleague
+        </button>
       </div>
 
       {/* Patient banner, after the NHS CUI layout: identity first and always visible. */}

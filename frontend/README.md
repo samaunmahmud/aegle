@@ -45,6 +45,23 @@ Modelled on hospital systems (EHR, RIS/PACS) rather than a SaaS dashboard:
   images load only when asked for, since each view is audited.
 - **Command palette** (`⌘K` / `Ctrl+K`): jump to any page or department, or find a
   patient by MRN.
+- **Consults** (right-hand dock on every clinical page): a clinician unsure about a case
+  asks a named colleague, filtered by department or "consultants only", or anyone on duty,
+  and the thread stays linked to the study. The dock minimises to a rail that still shows
+  what is waiting for you, opens to a panel, or maximises. Threads carry a link to the
+  study, never the patient's identifiers; opening a thread, replying and resolving are
+  audited, while polling for new messages and the unread count are not, so an open panel
+  does not flood the audit log. "Ask a colleague" on a study pre-fills the question.
+- **Clinician profiles**: grade (Consultant, Registrar, Foundation), job title and
+  picture beside every message, so a junior can see who is answering. The pictures in
+  `public/avatars` are illustrations of fictional people, generated for this demo with
+  Figma AI; anyone without one gets initials.
+- **Lights off**: a whole-application dark theme (moon icon, or the command palette) for
+  reading rooms, where low ambient light helps reading accuracy and reduces fatigue. It has
+  its own colour steps, checked for contrast, not an inverted light theme; the choice is
+  remembered per device and follows the system setting until one is made.
+- **Workload chart** on the overview: open studies per department split by AI priority,
+  built from the same summary as the counts, so it adds no patient-level reads.
 - **Strict CSP kept**: fonts (IBM Plex) are bundled and animation CSS is a stylesheet,
   so `style-src 'self'` needs no exceptions. Animations stop under
   `prefers-reduced-motion`.
@@ -102,3 +119,9 @@ each demo user's `id`, so their token subject stays the same across restarts and
 `users` rows core-api provisioned on first login keep working. Give any user you add to
 the realm a fixed `id` too; otherwise each restart issues a new subject and that login
 gets a 403 (core-api refuses a second account for the same email).
+
+The demo clinic has twelve clinicians (password `dev-only-password`), from consultants
+such as `amara.okafor` (neuroradiology), `kwame.asante` (thoracic radiology),
+`hannah.clarke` (histopathology) and `priya.raman` (dermatology), to `tomasz.nowak`
+(registrar) and `sofia.rossi` (foundation doctor). Their grade, title and picture are set
+in the dev seed (`core-api/src/main/resources/db/dev/R__dev_seed.sql`), not the token.

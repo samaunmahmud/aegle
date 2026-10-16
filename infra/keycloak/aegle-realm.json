@@ -131,6 +131,246 @@
       ]
     },
     {
+      "id": "8df1319b-b40c-5664-92e4-0a2491687afd",
+      "username": "amara.okafor",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "amara.okafor@aegle.local",
+      "firstName": "Amara",
+      "lastName": "Okafor",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "RADIOLOGIST"
+      ]
+    },
+    {
+      "id": "602eea36-d4b5-5354-8ba3-c1ff1c79d6da",
+      "username": "kwame.asante",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "kwame.asante@aegle.local",
+      "firstName": "Kwame",
+      "lastName": "Asante",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "RADIOLOGIST"
+      ]
+    },
+    {
+      "id": "b1f6c661-cb60-5b40-98ff-43f125f5f3c3",
+      "username": "tomasz.nowak",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "tomasz.nowak@aegle.local",
+      "firstName": "Tomasz",
+      "lastName": "Nowak",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "RADIOLOGIST"
+      ]
+    },
+    {
+      "id": "5500228a-33b5-5fd9-b7ed-499fce3bffce",
+      "username": "james.whitfield",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "james.whitfield@aegle.local",
+      "firstName": "James",
+      "lastName": "Whitfield",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "47062f75-aae5-58e2-8f36-c3040bfcef99",
+      "username": "priya.raman",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "priya.raman@aegle.local",
+      "firstName": "Priya",
+      "lastName": "Raman",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "d3710671-3e50-59d5-a1a9-1092a495efec",
+      "username": "wei.chen",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "wei.chen@aegle.local",
+      "firstName": "Wei",
+      "lastName": "Chen",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "3107feec-4338-59f5-8e09-ffb12b33907d",
+      "username": "hannah.clarke",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "hannah.clarke@aegle.local",
+      "firstName": "Hannah",
+      "lastName": "Clarke",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "f60447f9-6b20-5e87-ace5-251018acfe91",
+      "username": "fatima.alsayed",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "fatima.alsayed@aegle.local",
+      "firstName": "Fatima",
+      "lastName": "Al-Sayed",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "2bdd7af8-e8b4-5283-9631-f33b619a569e",
+      "username": "daniel.mensah",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "daniel.mensah@aegle.local",
+      "firstName": "Daniel",
+      "lastName": "Mensah",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
+      "id": "cd7f4cf6-a827-5607-a617-0f1c9060ed16",
+      "username": "sofia.rossi",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "sofia.rossi@aegle.local",
+      "firstName": "Sofia",
+      "lastName": "Rossi",
+      "attributes": {
+        "org_id": [
+          "00000000-0000-0000-0000-00000000a001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PHYSICIAN"
+      ]
+    },
+    {
       "id": "ee2a4df5-7e40-41b8-9d60-7e8068f5c83a",
       "username": "alex.auditor",
       "enabled": true,

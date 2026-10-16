@@ -2,6 +2,12 @@ import { freshToken } from "../auth/keycloak";
 import type { Specialty } from "../specialties";
 import type {
   AuditEntry,
+  ConsultBox,
+  ConsultDetail,
+  ConsultMessage,
+  ConsultThread,
+  NewConsult,
+  Person,
   AuditVerification,
   DicomSource,
   Me,
@@ -56,6 +62,26 @@ async function requestBlob(path: string): Promise<Blob> {
 
 export const api = {
   me: () => request<Me>("/api/me"),
+
+  colleagues: () => request<Person[]>("/api/consults/colleagues"),
+  consults: (box: ConsultBox) => request<ConsultThread[]>(`/api/consults?box=${box}`),
+  consultUnread: () => request<{ unreadThreads: number; askedOfMe: number; askedOfMeUnread: number }>("/api/consults/unread"),
+  consult: (id: string) => request<ConsultDetail>(`/api/consults/${id}`),
+  consultSince: (id: string, after: string) =>
+    request<ConsultMessage[]>(`/api/consults/${id}/messages?after=${encodeURIComponent(after)}`),
+  openConsult: (c: NewConsult) =>
+    request<ConsultDetail>("/api/consults", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(c),
+    }),
+  replyConsult: (id: string, body: string) =>
+    request<ConsultMessage>(`/api/consults/${id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    }),
+  resolveConsult: (id: string) => request<ConsultDetail>(`/api/consults/${id}/resolve`, { method: "POST" }),
 
   worklist: (states: WorklistState[] = ["OPEN", "IN_REVIEW"], specialty?: Specialty) =>
     request<WorklistPage>(

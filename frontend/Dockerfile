@@ -9,7 +9,8 @@ COPY . .
 # Baked into the bundle and the CSP: where browsers reach Keycloak.
 ARG VITE_KEYCLOAK_URL=https://localhost:8443
 ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
-RUN npm run build && node scripts/nginx-headers.ts > security-headers.conf
+# chmod: files from public/ keep the host's modes (owner-only on some drives); nginx must read them.
+RUN npm run build && chmod -R a+rX dist && node scripts/nginx-headers.ts > security-headers.conf
 
 FROM nginx:1.29-alpine
 COPY --from=build /app/dist /usr/share/nginx/html

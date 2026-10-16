@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { SPECIALTIES } from "../specialties";
+import { setTheme, useTheme } from "../theme";
 import { Icon, SpecialtyIcon } from "./Icons";
 
-type Command = { id: string; label: string; hint: string; icon: ReactNode; to: string; keywords?: string };
+type Command = { id: string; label: string; hint: string; icon: ReactNode; to?: string; run?: () => void; keywords?: string };
 
 /** Ctrl/Cmd+K: jump anywhere, or to a patient by MRN, without leaving the keyboard. */
 export function CommandPalette() {
@@ -15,6 +16,7 @@ export function CommandPalette() {
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const clinician = roles.includes("RADIOLOGIST") || roles.includes("PHYSICIAN");
+  const dark = useTheme() === "dark";
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -64,8 +66,13 @@ export function CommandPalette() {
     if (roles.includes("ADMIN")) {
       list.push({ id: "dicom", label: "DICOM senders", hint: "Admin", icon: <Icon.Network />, to: "/admin/dicom", keywords: "modality pacs ae title" });
     }
+    list.push(
+      dark
+        ? { id: "theme", label: "Lights on", hint: "Display", icon: <Icon.Sun />, run: () => setTheme("light"), keywords: "theme light mode" }
+        : { id: "theme", label: "Lights off (reading room)", hint: "Display", icon: <Icon.Moon />, run: () => setTheme("dark"), keywords: "theme dark mode night" },
+    );
     return list;
-  }, [clinician, roles]);
+  }, [clinician, roles, dark]);
 
   const term = q.trim().toLowerCase();
   const matches = commands.filter((c) => !term || `${c.label} ${c.hint} ${c.keywords ?? ""}`.toLowerCase().includes(term));
@@ -78,7 +85,8 @@ export function CommandPalette() {
 
   function go(c: Command) {
     setOpen(false);
-    navigate(c.to);
+    if (c.run) c.run();
+    else if (c.to) navigate(c.to);
   }
 
   if (!open) return null;

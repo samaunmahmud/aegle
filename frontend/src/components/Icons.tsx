@@ -165,6 +165,48 @@ export const Icon = {
       <path d="M12 7v5l3 2" />
     </Svg>
   ),
+  Chat: () => (
+    <Svg>
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z" />
+      <path d="M8.5 10.5h7M8.5 13.5h4.5" />
+    </Svg>
+  ),
+  Plus: () => (
+    <Svg>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  ),
+  Minimise: () => (
+    <Svg>
+      <path d="M13 5l7 7-7 7M4 12h16" />
+    </Svg>
+  ),
+  Restore: () => (
+    <Svg>
+      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+    </Svg>
+  ),
+  Check: () => (
+    <Svg size={16}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </Svg>
+  ),
+  Send: () => (
+    <Svg size={16}>
+      <path d="M21 3 10 14M21 3l-7 18-4-7-7-4z" />
+    </Svg>
+  ),
+  Moon: () => (
+    <Svg>
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+    </Svg>
+  ),
+  Sun: () => (
+    <Svg>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </Svg>
+  ),
   Alert: () => (
     <Svg size={16}>
       <path d="M12 3l10 18H2z" />

@@ -1,23 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { clinicalDay, clock } from "../format";
 import { CommandPalette } from "./CommandPalette";
 import { CriticalBell, DepartmentSummaryProvider } from "./DepartmentSummary";
+import { setTheme, useTheme } from "../theme";
+import { Avatar } from "./Avatar";
+import { ConsultDock } from "./ConsultDock";
 import { Icon } from "./Icons";
+import type { Me } from "../api/types";
 
 function navClass({ isActive }: { isActive: boolean }) {
   return isActive ? "tab-link active" : "tab-link";
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
 }
 
 const ROLE_TITLE: Record<string, string> = {
@@ -82,19 +77,39 @@ function PatientSearch() {
   );
 }
 
+/** Lights off: dims the whole application for reading rooms. */
+function ThemeToggle() {
+  const theme = useTheme();
+  const dark = theme === "dark";
+  return (
+    <button
+      type="button"
+      className="icon-button"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-pressed={dark}
+      aria-label="Lights off (dark reading-room theme)"
+      title={dark ? "Lights on" : "Lights off: dark reading-room theme"}
+    >
+      {dark ? <Icon.Sun /> : <Icon.Moon />}
+    </button>
+  );
+}
+
 export function Layout() {
   const { roles, name, logout } = useAuth();
-  const [organisation, setOrganisation] = useState<string | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const organisation = me?.organisationName ?? null;
   const clinician = roles.includes("RADIOLOGIST") || roles.includes("PHYSICIAN");
   const canAudit = roles.includes("ADMIN") || roles.includes("AUDITOR");
   const isAdmin = roles.includes("ADMIN");
+  const location = useLocation();
   const role = roles.find((r) => ROLE_TITLE[r]);
 
   useEffect(() => {
     api
       .me()
-      .then((me) => setOrganisation(me.organisationName))
-      .catch(() => setOrganisation(null));
+      .then(setMe)
+      .catch(() => setMe(null));
   }, []);
 
   return (
@@ -128,15 +143,16 @@ export function Layout() {
         >
           Research prototype
         </span>
+        <ThemeToggle />
         {clinician && <CriticalBell />}
         <Clock />
         <div className="appbar-user">
-          <div className="avatar" aria-hidden="true">
-            {initials(name)}
-          </div>
+          <Avatar name={name} avatar={me?.avatar} size={34} ring />
           <div className="who">
             <div className="who-name">{name}</div>
-            <div className="who-role">{role ? ROLE_TITLE[role] : roles.join(", ").toLowerCase()}</div>
+            <div className="who-role" title={me?.jobTitle ?? undefined}>
+              {me?.jobTitle ?? (role ? ROLE_TITLE[role] : roles.join(", ").toLowerCase())}
+            </div>
           </div>
           <button className="icon-button" onClick={logout} title="Sign out" aria-label="Sign out">
             <Icon.SignOut />
@@ -173,14 +189,19 @@ export function Layout() {
         )}
       </nav>
 
+      <div className={`workspace${clinician ? " with-dock" : ""}`}>
       <div className="main">
         <main className="content">
-          <Outlet />
+          <div key={location.pathname} className="page-enter">
+            <Outlet />
+          </div>
         </main>
         <footer className="footer">
           <span>Aegle suggests; the clinician decides. Every AI finding is reviewed and signed by a qualified clinician.</span>
           <span>All access is audited.</span>
         </footer>
+      </div>
+      {clinician && <ConsultDock me={me} />}
       </div>
       <CommandPalette />
     </div>

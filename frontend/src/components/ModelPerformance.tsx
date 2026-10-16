@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { titleCase } from "../format";
+import { useTheme } from "../theme";
 
 type Metrics = Record<string, unknown>;
 type PerClass = Record<string, { n: number; sensitivity: number; precision: number }>;
@@ -9,6 +10,9 @@ type Confusion = { labels: string[]; rows_true_cols_predicted: number[][] };
 // means "none" and recedes toward the surface.
 const RAMP = ["#f3f7fc", "#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"];
 const INK_FLIP = 8; // from this step on, cell text is white
+// Dark theme: its own steps, dark -> light, so more cases still reads as "stands out more"
+// against the dark surface; text flips to dark ink on the bright end.
+const RAMP_DARK = ["#141e28", "#16293b", "#17344d", "#1a3f60", "#1e4b73", "#235786", "#296399", "#3170ab", "#3e7fbd", "#5590cc", "#6da1d9", "#87b3e4", "#a2c6ee", "#c0dbf8"];
 
 const pct = (v: number) => `${(v * 100).toFixed(v === 1 || v === 0 ? 0 : 1)}%`;
 /** Column headers for wide matrices: initials for multi-word classes (BCC), else 4 letters. */
@@ -17,8 +21,16 @@ const short = (label: string) => {
   return words.length > 1 ? words.map((w) => w[0].toUpperCase()).join("") : words[0].slice(0, 4);
 };
 
+function cellInk(step: number, n: number, dark: boolean) {
+  if (n === 0) return dark ? "#5f7182" : "#8a97a5";
+  if (dark) return step >= INK_FLIP + 2 ? "#0b1218" : "#dbe4ec";
+  return step >= INK_FLIP ? "#fff" : "#16212c";
+}
+
 function ConfusionMatrix({ c, unit }: { c: Confusion; unit: string }) {
   const [hover, setHover] = useState<[number, number] | null>(null);
+  const dark = useTheme() === "dark";
+  const ramp = dark ? RAMP_DARK : RAMP;
   const rows = c.rows_true_cols_predicted;
   const totals = rows.map((r) => r.reduce((a, b) => a + b, 0));
   const readout = hover
@@ -49,14 +61,14 @@ function ConfusionMatrix({ c, unit }: { c: Confusion; unit: string }) {
               <th scope="row">{titleCase(c.labels[i])}</th>
               {r.map((n, j) => {
                 const f = n / Math.max(1, totals[i]);
-                const step = Math.round(f * (RAMP.length - 1));
+                const step = Math.round(f * (ramp.length - 1));
                 const on = hover && hover[0] === i && hover[1] === j;
                 return (
                   <td
                     key={j}
                     tabIndex={0}
                     className={`${i === j ? "cm-diag" : ""}${on ? " cm-on" : ""}`}
-                    style={{ background: RAMP[step], color: step >= INK_FLIP ? "#fff" : n === 0 ? "#8a97a5" : "#16212c" }}
+                    style={{ background: ramp[step], color: cellInk(step, n, dark) }}
                     onMouseEnter={() => setHover([i, j])}
                     onFocus={() => setHover([i, j])}
                     aria-label={`True ${titleCase(c.labels[i])}, predicted ${titleCase(c.labels[j])}: ${n}`}

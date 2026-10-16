@@ -7,11 +7,67 @@ export type WorklistState = "OPEN" | "IN_REVIEW" | "DONE";
 export type Urgency = "CRITICAL" | "URGENT" | "ROUTINE";
 export type ReviewDecision = "ACCEPT" | "REJECT" | "MODIFY";
 
+export type Grade = "CONSULTANT" | "REGISTRAR" | "FOUNDATION";
+
 export interface Me {
   userId: string;
   organisationId: string;
   organisationName: string;
   roles: string[];
+  jobTitle: string | null;
+  grade: Grade | null;
+  specialty: Specialty | null;
+  avatar: string | null;
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  jobTitle: string | null;
+  grade: Grade | null;
+  specialty: Specialty | null;
+  avatar: string | null;
+}
+
+export interface ConsultThread {
+  id: string;
+  subject: string;
+  specialty: Specialty | null;
+  studyId: string | null;
+  studyLabel: string | null;
+  urgency: "ROUTINE" | "URGENT";
+  status: "OPEN" | "RESOLVED";
+  createdAt: string;
+  lastMessageAt: string;
+  createdBy: Person;
+  askedOf: Person | null;
+  messageCount: number;
+  unread: number;
+  lastMessage: { authorName: string; preview: string; at: string } | null;
+}
+
+export interface ConsultMessage {
+  id: string;
+  author: Person;
+  body: string;
+  at: string;
+  mine: boolean;
+}
+
+export interface ConsultDetail {
+  thread: ConsultThread;
+  messages: ConsultMessage[];
+}
+
+export type ConsultBox = "for-me" | "mine" | "open" | "resolved";
+
+export interface NewConsult {
+  subject: string;
+  body: string;
+  specialty?: Specialty;
+  studyId?: string;
+  askedOf?: string;
+  urgency: "ROUTINE" | "URGENT";
 }
 
 export interface WorklistItem {
